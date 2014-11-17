@@ -1,0 +1,6 @@
+requests
+requests-mock
+cryptography
+PyBrowserID
+hawkauthlib
+six
