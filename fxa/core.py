@@ -31,8 +31,10 @@ class Client(object):
             "email": email,
             "authPW": hexlify(derive_key(stretchpwd, "authPW")),
         }
+        EXTRA_KEYS = ("service", "redirectTo", "resume", "preVerifyToken",
+                      "preVerified")
         for extra in kwds:
-            if extra in ("service", "redirectTo", "resume", "preVerifyToken"):
+            if extra in EXTRA_KEYS:
                 body[extra] = kwds[extra]
             else:
                 msg = "Unexpected keyword argument: {0}".format(extra)
@@ -99,7 +101,7 @@ class Client(object):
 
     def get_random_bytes(self):
         # XXX TODO: sanity-check the schema of the returned response
-        return unhexlify(self.apiclient.get("/v1/get_random_bytes")["data"])
+        return unhexlify(self.apiclient.post("/v1/get_random_bytes")["data"])
 
     def reset_account(self, email, token, password=None, stretchpwd=None):
         stretchpwd = self._get_stretched_password(email, password, stretchpwd)
@@ -238,10 +240,10 @@ class Session(object):
     def sign_certificate(self, public_key, duration=DEFAULT_CERT_DURATION):
         body = {
             "publicKey": public_key,
-            duration: duration,
+            "duration": duration,
         }
         url = "/v1/certificate/sign"
-        resp = self.apiclient.get(url, body, auth=self._auth)
+        resp = self.apiclient.post(url, body, auth=self._auth)
         return resp["cert"]
 
     def change_password(self, oldpwd, newpwd):
@@ -270,4 +272,4 @@ class Session(object):
 
     def get_random_bytes(self):
         # XXX TODO: sanity-check the schema of the returned response
-        return unhexlify(self.apiclient.get("/v1/get_random_bytes")["data"])
+        return self.client.get_random_bytes()

@@ -223,10 +223,10 @@ class APIClient(object):
     def get(self, url, **kwds):
         return self.request("GET", url, **kwds)
 
-    def post(self, url, json, **kwds):
+    def post(self, url, json=None, **kwds):
         return self.request("POST", url, json, **kwds)
 
-    def put(self, url, json, **kwds):
+    def put(self, url, json=None, **kwds):
         return self.request("PUT", url, json, **kwds)
 
     def delete(self, url, **kwds):
