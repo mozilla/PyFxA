@@ -102,15 +102,15 @@ class TestCoreClient(unittest.TestCase):
         self._accounts_to_delete.append(acct)
         is_verify_email = lambda m: "x-verify-code" in m["headers"]
         m1 = acct.wait_for_email(is_verify_email)
-        code1 = m1["headers"]["x-verify-code"]
+        code1 = m1["headers"]["x-verify-code"]  # NOQA
         acct.clear()
         session.resend_email_code()
         # XXX TODO: this won't work against a live server because we
         # refuse to send duplicate emails within a short timespan.
-        #m2 = acct.wait_for_email(is_verify_email)
-        #code2 = m2["headers"]["x-verify-code"]
-        #self.assertNotEqual(m1, m2)
-        #self.assertEqual(code1, code2)
+        # m2 = acct.wait_for_email(is_verify_email)
+        # code2 = m2["headers"]["x-verify-code"]
+        # self.assertNotEqual(m1, m2)
+        # self.assertEqual(code1, code2)
 
     def test_forgot_password_flow(self):
         acct = TestEmailAccount()
