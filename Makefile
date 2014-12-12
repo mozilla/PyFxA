@@ -20,8 +20,18 @@ $(VENVDIR)/COMPLETE: requirements.txt
 test: $(BINDIR)/flake8 $(BINDIR)/nosetests $(BINDIR)/coverage
 	$(BINDIR)/flake8 ./fxa
 	$(BINDIR)/coverage erase
-	$(BINDIR)/coverage run $(BINDIR)/nosetests ./fxa
+	$(BINDIR)/coverage run $(BINDIR)/nosetests -s ./fxa
 	$(BINDIR)/coverage report --include="*fxa*"
+
+.PHONY: coverage
+coverage: htmlcov/index.html
+	$(BINDIR)/coverage report --include="*fxa*"
+
+htmlcov/index.html: .coverage
+	$(BINDIR)/coverage html --include="*fxa*"
+
+.coverage: $(BINDIR)/coverage
+	$(BINDIR)/coverage run $(BINDIR)/nosetests ./fxa
 
 $(BINDIR)/flake8: $(VENVDIR)/COMPLETE
 	$(INSTALL) -U --force-reinstall flake8
@@ -32,6 +42,6 @@ $(BINDIR)/nosetests: $(VENVDIR)/COMPLETE
 $(BINDIR)/coverage: $(VENVDIR)/COMPLETE
 	$(INSTALL) -U --force-reinstall coverage
 
-.PHONY: shell
-shell: $(VENVDIR)/COMPLETE
+.PHONY: pyshell
+pyshell: $(VENVDIR)/COMPLETE
 	$(PYTHON)
