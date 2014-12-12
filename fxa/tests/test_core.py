@@ -3,12 +3,18 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import unittest
+import urlparse
+
+import six
+import browserid.tests.support
+import browserid.utils
 
 import fxa.errors
 from fxa.core import Client
 from fxa.crypto import quick_stretch_password
 
 from fxa.tests.utils import (
+    mutate_one_byte,
     TestEmailAccount,
     DUMMY_PASSWORD,
     DUMMY_STRETCHED_PASSWORD,
@@ -67,6 +73,84 @@ class TestCoreClient(unittest.TestCase):
         self.assertEqual(session.keys, None)
         self.assertNotEqual(session._key_fetch_token, None)
 
+    def test_account_login(self):
+        acct = TestEmailAccount()
+        session1 = self.client.create_account(
+            email=acct.email,
+            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+        )
+        self._accounts_to_delete.append(acct)
+        session2 = self.client.login(
+            email=acct.email,
+            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+        )
+        self.assertEqual(session1.email, session2.email)
+        self.assertNotEqual(session1.token, session2.token)
+
+    def test_get_random_bytes(self):
+        b1 = self.client.get_random_bytes()
+        b2 = self.client.get_random_bytes()
+        self.assertTrue(isinstance(b1, six.binary_type))
+        self.assertNotEqual(b1, b2)
+
+    def test_resend_verify_code(self):
+        acct = TestEmailAccount()
+        session = self.client.create_account(
+            email=acct.email,
+            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+        )
+        self._accounts_to_delete.append(acct)
+        is_verify_email = lambda m: "x-verify-code" in m["headers"]
+        m1 = acct.wait_for_email(is_verify_email)
+        code1 = m1["headers"]["x-verify-code"]
+        acct.clear()
+        session.resend_email_code()
+        # XXX TODO: this won't work against a live server because we
+        # refuse to send duplicate emails within a short timespan.
+        #m2 = acct.wait_for_email(is_verify_email)
+        #code2 = m2["headers"]["x-verify-code"]
+        #self.assertNotEqual(m1, m2)
+        #self.assertEqual(code1, code2)
+
+    def test_forgot_password_flow(self):
+        acct = TestEmailAccount()
+        self.client.create_account(
+            email=acct.email,
+            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+        )
+        self._accounts_to_delete.append(acct)
+
+        # Initiate the password reset flow, and grab the verification code.
+        pftok = self.client.send_reset_code(acct.email, service="foobar")
+        m = acct.wait_for_email(lambda m: "x-recovery-code" in m["headers"])
+        if not m:
+            raise RuntimeError("Password reset email was not received")
+        acct.clear()
+        code = m["headers"]["x-recovery-code"]
+
+        # Try with an invalid code to test error handling.
+        tries = pftok.tries_remaining
+        self.assertTrue(tries > 1)
+        with self.assertRaises(Exception):
+            pftok.verify_code(mutate_one_byte(code))
+        pftok.get_status()
+        self.assertEqual(pftok.tries_remaining, tries - 1)
+
+        # Re-send the code, as if we've lost the email.
+        pftok.resend_code()
+        m = acct.wait_for_email(lambda m: "x-recovery-code" in m["headers"])
+        if not m:
+            raise RuntimeError("Password reset email was not received")
+        self.assertEqual(m["headers"]["x-recovery-code"], code)
+
+        # Now verify with the actual code, and reset the account.
+        artok = pftok.verify_code(code)
+        self.client.reset_account(
+            email=acct.email,
+            token=artok,
+            stretchpwd=DUMMY_STRETCHED_PASSWORD
+        )
+
 
 class TestCoreClientSession(unittest.TestCase):
 
@@ -76,7 +160,10 @@ class TestCoreClientSession(unittest.TestCase):
         self.client = Client(self.server_url)
         # Create a fresh testing account.
         self.acct = TestEmailAccount()
-        self.stretchpwd = DUMMY_STRETCHED_PASSWORD
+        self.stretchpwd = quick_stretch_password(
+            self.acct.email,
+            DUMMY_PASSWORD,
+        )
         self.session = self.client.create_account(
             email=self.acct.email,
             stretchpwd=self.stretchpwd,
@@ -118,3 +205,30 @@ class TestCoreClientSession(unittest.TestCase):
     def test_email_status(self):
         status = self.session.get_email_status()
         self.assertTrue(status["verified"])
+
+    def test_get_random_bytes(self):
+        b1 = self.session.get_random_bytes()
+        b2 = self.session.get_random_bytes()
+        self.assertTrue(isinstance(b1, six.binary_type))
+        self.assertNotEqual(b1, b2)
+
+    def test_sign_certificate(self):
+        email = self.acct.email
+        pubkey = browserid.tests.support.get_keypair(email)[0]
+        cert = self.session.sign_certificate(pubkey)
+        issuer = browserid.utils.decode_json_bytes(cert.split(".")[1])["iss"]
+        expected_issuer = urlparse.urlparse(self.client.server_url).hostname
+        self.assertEqual(issuer, expected_issuer)
+
+    def test_change_password(self):
+        # Change the password.
+        newpwd = mutate_one_byte(DUMMY_PASSWORD)
+        self.stretchpwd = quick_stretch_password(self.acct.email, newpwd)
+        self.session.change_password(DUMMY_PASSWORD, newpwd)
+
+        # Check that we can use the new password.
+        session2 = self.client.login(self.acct.email, newpwd, keys=True)
+
+        # Check that encryption keys have been preserved.
+        session2.fetch_keys()
+        self.assertEquals(self.session.keys, session2.keys)

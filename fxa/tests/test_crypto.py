@@ -7,7 +7,13 @@ import re
 import unittest
 from binascii import unhexlify
 
-from fxa.crypto import quick_stretch_password, derive_key, bundle, unbundle
+from fxa.crypto import (
+    quick_stretch_password,
+    derive_key,
+    bundle,
+    unbundle,
+    xor
+)
 
 from fxa.tests.utils import (
     mutate_one_byte,
@@ -65,3 +71,11 @@ class TestCoreCrypto(unittest.TestCase):
         bad_enc_payload = mutate_one_byte(enc_payload)
         with self.assertRaises(Exception):
             unbundle(key, "test-namespace", bad_enc_payload)
+
+    def test_xor(self):
+        self.assertEqual(xor("", ""), "")
+        self.assertEqual(xor("\x01", "\x01"), "\x00")
+        self.assertEqual(xor("\x01", "\x02"), "\x03")
+        self.assertEqual(xor("abc", "def"), "\x05\x07\x05")
+        with self.assertRaises(ValueError):
+            xor("shorter", "longer string")

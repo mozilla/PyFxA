@@ -8,8 +8,6 @@ import requests
 import urlparse
 from binascii import unhexlify
 
-from six import int2byte
-
 from fxa._utils import uniq
 
 
@@ -21,14 +19,19 @@ DUMMY_STRETCHED_PASSWORD = unhexlify(
 
 
 def mutate_one_byte(input):
-    """Randomly change one character in the given bytestring."""
+    """Randomly change one character in the given bytestring.
+
+    This is handy for testing tokens, signatures, and other things
+    that are supposed to fail if they're tampered with.
+    """
     if not input:
         raise ValueError("cannot mutate empty string")
     pos = random.randint(0, len(input) - 1)
-    what = int2byte(random.randint(0, 255))
-    while input[pos] == what:
-        what = int2byte(random.randint(0, 255))
-    return input[:pos] + what + input[pos + 1:]
+    if input[pos] == "a":
+        replacement = "b"
+    else:
+        replacement = "a"
+    return input[:pos] + replacement + input[pos + 1:]
 
 
 class TestEmailAccount(object):

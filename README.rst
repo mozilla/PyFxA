@@ -11,7 +11,7 @@ to provide easy support for the following features:
   * being an FxA OAuth Service Provider
   * accessing attached services
 
-But none of that is really ready yet; caveat emptor.
+But none of that is ready yet; caveat emptor.
 
 Currently, basic auth-server operations should work like so::
 
@@ -24,8 +24,27 @@ Currently, basic auth-server operations should work like so::
     cert = session.sign_certificate(myPublicKey)
     session.change_password("MySecretPassword", "ThisIsEvenMoreSecret")
 
+There's also very basic integration with restmail.net, to allow for
+testing with live email addresses.  It works like this:
 
-Here's some sketchy notes on things we should add in this module:
+    from fxa.core import Client
+    from fxa.tests.utils import TestEmailAccount
 
-  * restmail.net interface to make testing easy
-  * easy preVerifyToken support for testing purposes
+    # Create a testing account using an @restmail.net address.
+    acct = TestEmailAccount()
+    client = Client("https://api.accounts.firefox.com")
+    session = client.create_account(acct.email, "MySecretPassword")
+
+    # Verify the account using the code from email.
+    acct.fetch()
+    for m in acct.messages:
+        if "x-verify-code" in m["headers"]:
+            session.verify_email_code(m["headers"]["x-verify-code"])
+
+    ...
+
+    # Destroy the account once you're done with it.
+    acct.clear()
+    client.destroy_account(acct.email, "MySecretPassword")
+
+

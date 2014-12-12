@@ -16,13 +16,15 @@ DEFAULT_CERT_DURATION = 1000 * 60 * 30  # half an hour, in milliseconds
 class Client(object):
     """Client for talking to the Firefox Accounts auth server."""
 
-    def __init__(self, server_url=None, apiclient=None):
+    def __init__(self, server_url=None):
         if server_url is None:
             server_url = DEFAULT_SERVER_URL
-        self.server_url = server_url
-        if apiclient is None:
-            apiclient = APIClient(self.server_url)
-        self.apiclient = apiclient
+        if isinstance(server_url, basestring):
+            self.server_url = server_url
+            self.apiclient = APIClient(server_url)
+        else:
+            self.apiclient = server_url
+            self.server_url = self.apiclient.server_url
 
     def create_account(self, email, password=None, stretchpwd=None, **kwds):
         keys = kwds.pop("keys", False)
@@ -123,7 +125,14 @@ class Client(object):
                 msg = "Unexpected keyword argument: {0}".format(extra)
                 raise TypeError(msg)
         url = "/v1/password/forgot/send_code"
-        return self.apiclient.post(url, body)
+        resp = self.apiclient.post(url, body)
+        return PasswordForgotToken(
+            self, email,
+            resp["passwordForgotToken"],
+            resp["ttl"],
+            resp["codeLength"],
+            resp["tries"],
+        )
 
     def resend_reset_code(self, email, token, **kwds):
         body = {
@@ -235,7 +244,7 @@ class Session(object):
                 msg = "Unexpected keyword argument: {0}".format(extra)
                 raise TypeError(msg)
         url = "/v1/recovery_email/resend_code"
-        self.apiclient.get(url, body, auth=self._auth)
+        self.apiclient.post(url, body, auth=self._auth)
 
     def sign_certificate(self, public_key, duration=DEFAULT_CERT_DURATION):
         body = {
@@ -273,3 +282,31 @@ class Session(object):
     def get_random_bytes(self):
         # XXX TODO: sanity-check the schema of the returned response
         return self.client.get_random_bytes()
+
+
+class PasswordForgotToken(object):
+
+    def __init__(self, client, email, token, ttl=0, code_length=16,
+                 tries_remaining=1):
+        self.client = client
+        self.email = email
+        self.token = token
+        self.ttl = ttl
+        self.code_length = code_length
+        self.tries_remaining = tries_remaining
+
+    def verify_code(self, code):
+        resp = self.client.verify_reset_code(self.token, code)
+        return resp["accountResetToken"]
+
+    def resend_code(self, **kwds):
+        resp = self.client.resend_reset_code(self.email, self.token, **kwds)
+        self.ttl = resp["ttl"]
+        self.code_length = resp["codeLength"]
+        self.tries_remaining = resp["tries"]
+
+    def get_status(self):
+        resp = self.client.get_reset_code_status(self.token)
+        self.ttl = resp["ttl"]
+        self.tries_remaining = resp["tries"]
+        return resp
