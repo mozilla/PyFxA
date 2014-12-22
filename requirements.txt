@@ -1,5 +1,5 @@
 requests
-requests-mock
+responses
 cryptography
 PyBrowserID
 hawkauthlib
