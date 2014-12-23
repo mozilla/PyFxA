@@ -45,3 +45,11 @@ $(BINDIR)/coverage: $(VENVDIR)/COMPLETE
 .PHONY: pyshell
 pyshell: $(VENVDIR)/COMPLETE
 	$(PYTHON)
+
+.PHONY: clean
+clean:
+	rm -rf htmlcov .coverage dist
+
+.PHONY: clobber
+clobber: clean
+	rm -rf $(VENVDIR)
