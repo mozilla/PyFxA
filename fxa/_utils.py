@@ -13,13 +13,15 @@ etc as we go.  So don't import any of it outside of this package.
 import os
 import time
 import hashlib
-import urlparse
-from binascii import unhexlify
+from binascii import hexlify, unhexlify
 from base64 import b64encode
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
+
+from six import PY3
+from six.moves.urllib.parse import urlparse, urljoin
 
 import requests
 import requests.auth
@@ -29,9 +31,18 @@ import fxa.errors
 import fxa.crypto
 
 
+if not PY3:
+    hexstr = hexlify
+else:
+
+    def hexstr(data):
+        """Like binascii.hexlify, but always returns a str instance."""
+        return hexlify(data).decode("ascii")
+
+
 def uniq(size=10):
     """Generate a short random hex string."""
-    return os.urandom(size // 2 + 1).encode("hex")[:size]
+    return hexstr(os.urandom(size // 2 + 1))[:size]
 
 
 class APIClient(object):
@@ -146,7 +157,7 @@ class APIClient(object):
             url = url[1:]
         if not self.server_url.endswith("/"):
             self.server_url = self.server_url + "/"
-        url = urlparse.urljoin(self.server_url, url)
+        url = urljoin(self.server_url, url)
         if self.timeout is not None:
             kwds.setdefault("timeout", self.timeout)
 
@@ -159,7 +170,7 @@ class APIClient(object):
             raise fxa.errors.OutOfProtocolError(msg.format(content_type))
         try:
             body = resp.json()
-        except ValueError, e:
+        except ValueError as e:
             msg = "API responded with invalid json: {0}"
             raise fxa.errors.OutOfProtocolError(msg.format(e))
 
@@ -245,7 +256,7 @@ class HawkTokenAuth(requests.auth.AuthBase):
     def __init__(self, token, tokentype, apiclient=None):
         tokendata = unhexlify(token)
         key_material = fxa.crypto.derive_key(tokendata, tokentype, 3*32)
-        self.id = key_material[:32].encode("hex")
+        self.id = hexstr(key_material[:32])
         self.auth_key = key_material[32:64]
         self.bundle_key = key_material[64:]
         self.apiclient = apiclient
@@ -253,12 +264,17 @@ class HawkTokenAuth(requests.auth.AuthBase):
     def __call__(self, req):
         # Requests doesn't include the port in the Host header by default.
         # Ensure a fully-correct value so that signatures work properly.
-        req.headers["Host"] = urlparse.urlparse(req.url).netloc
+        req.headers["Host"] = urlparse(req.url).netloc
         params = {}
         if req.body:
-            payload_str = 'hawk.1.payload\napplication/json\n'
-            payload_str += req.body + '\n'
-            params['hash'] = b64encode(hashlib.sha256(payload_str).digest())
+            hasher = hashlib.sha256()
+            hasher.update(b"hawk.1.payload\napplication/json\n")
+            hasher.update(req.body.encode("utf8"))
+            hasher.update(b"\n")
+            hash = b64encode(hasher.digest())
+            if PY3:
+                hash = hash.decode("ascii")
+            params["hash"] = hash
         if self.apiclient is not None:
             params["ts"] = str(int(self.apiclient.server_curtime()))
         hawkauthlib.sign_request(req, self.id, self.auth_key, params=params)
