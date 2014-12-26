@@ -26,8 +26,7 @@ class TestClientTradeCode(unittest.TestCase):
         responses.add(responses.POST,
                       'https://server/v1/token',
                       body=body,
-                      content_type='application/json',
-                      adding_headers={'timestamp': '0'})
+                      content_type='application/json')
 
         self.token = self.client.trade_code(client_id='abc',
                                             client_secret='cake',
@@ -74,8 +73,7 @@ class TestAuthClientVerifyCode(unittest.TestCase):
         responses.add(responses.POST,
                       'https://server/v1/verify',
                       body=body,
-                      content_type='application/json',
-                      adding_headers={'timestamp': '0'})
+                      content_type='application/json')
 
         self.verification = self.client.verify_token(token='abc')
         self.response = responses.calls[0]

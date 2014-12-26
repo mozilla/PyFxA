@@ -208,7 +208,7 @@ class APIClient(object):
         # We do this automatically once per session in the hopes of avoiding
         # having to retry subsequent auth failures.  We do it *after* the retry
         # checking above, because it wrecks the "were we out of sync?" check.
-        if self._clockskew is None:
+        if self._clockskew is None and "timestamp" in resp.headers:
             try:
                 server_timestamp = int(resp.headers["timestamp"])
             except ValueError:
