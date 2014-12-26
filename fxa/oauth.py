@@ -10,7 +10,7 @@ DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com"
 
 
 class Client(object):
-    """Client for talking to the Firefox Authentication server"""
+    """Client for talking to the Firefox OAuth server"""
 
     def __init__(self, server_url=None):
         if server_url is None:
@@ -21,7 +21,12 @@ class Client(object):
             self.apiclient = server_url
 
     def trade_code(self, client_id, client_secret, code):
-        """Trade the authentication code for a longer lived token."""
+        """Trade the authentication code for a longer lived token.
+
+        :param client_id: the string generated during FxA client registration.
+        :param client_secret: the related secret string.
+        :returns: a dict with user id and authorized scopes for this token.
+        """
         url = '/v1/token'
         body = {
             'code': code,
@@ -37,7 +42,12 @@ class Client(object):
         return resp['access_token']
 
     def verify_token(self, token):
-        """Verify a OAuth token, and retrieve user id and scopes."""
+        """Verify a OAuth token, and retrieve user id and scopes.
+
+        :param token: the string to verify.
+        :returns: a dict with user id and authorized scopes for this token.
+        :raises fxa.errors.ClientError: if the provided token is invalid.
+        """
         url = '/v1/verify'
         body = {
             'token': token
