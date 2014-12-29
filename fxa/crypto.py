@@ -13,7 +13,8 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.hmac import HMAC
 
-from six import int2byte
+from six import int2byte, text_type
+from six.moves import xrange
 
 
 def hkdf_namespace(name, extra=None):
@@ -25,6 +26,8 @@ def hkdf_namespace(name, extra=None):
     specific URI to the given name components to generate a (hopefully)
     globally-unique info string.
     """
+    if isinstance(name, text_type):
+        name = name.encode("utf8")
     kw = b"identity.mozilla.com/picl/v1/" + name
     if extra is not None:
         kw = kw + b":" + extra
@@ -39,9 +42,9 @@ def quick_stretch_password(email, password):
     the client (which may be very resource constrained) and resistance to
     brute-force guessing (which would ideally demand more stretching).
     """
-    if isinstance(email, unicode):
+    if isinstance(email, text_type):
         email = email.encode("utf8")
-    if isinstance(password, unicode):
+    if isinstance(password, text_type):
         password = password.encode("utf8")
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),

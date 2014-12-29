@@ -2,13 +2,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import sys
 import time
 import random
 import requests
-import urlparse
 from binascii import unhexlify
 
+from six import binary_type
+from six.moves.urllib.parse import urlparse, urljoin
+
 from fxa._utils import uniq
+
+if sys.version_info >= (2, 7):
+    import unittest  # NOQA
+else:
+    import unittest2 as unittest  # NOQA
 
 
 DUMMY_EMAIL = "PyFxATester@restmail.net"
@@ -31,6 +39,8 @@ def mutate_one_byte(input):
         replacement = "b"
     else:
         replacement = "a"
+    if isinstance(input, binary_type):
+        replacement = replacement.encode("ascii")
     return input[:pos] + replacement + input[pos + 1:]
 
 
@@ -60,14 +70,14 @@ class TestEmailAccount(object):
             server_url = self.DEFAULT_SERVER_URL
         if email is None:
             email = "test-{uniq}@{hostname}"
-        hostname = urlparse.urlparse(server_url).hostname
+        hostname = urlparse(server_url).hostname
         self.email = email.format(uniq=uniq(), hostname=hostname)
         self.server_url = server_url
         if self.email.endswith("@" + hostname):
             userid = self.email.rsplit("@", 1)[0]
         else:
             userid = self.email
-        self.user_url = urlparse.urljoin(self.server_url, "/mail/" + userid)
+        self.user_url = urljoin(self.server_url, "/mail/" + userid)
         self.messages = []
 
     def fetch(self):

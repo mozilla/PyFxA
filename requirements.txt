@@ -4,3 +4,4 @@ cryptography
 PyBrowserID
 hawkauthlib
 six
+unittest2

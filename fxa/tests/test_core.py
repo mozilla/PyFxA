@@ -2,10 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import unittest
-import urlparse
+from six import binary_type
+from six.moves.urllib.parse import urlparse
 
-import six
 import browserid.tests.support
 import browserid.utils
 
@@ -14,6 +13,7 @@ from fxa.core import Client
 from fxa.crypto import quick_stretch_password
 
 from fxa.tests.utils import (
+    unittest,
     mutate_one_byte,
     TestEmailAccount,
     DUMMY_PASSWORD,
@@ -90,7 +90,7 @@ class TestCoreClient(unittest.TestCase):
     def test_get_random_bytes(self):
         b1 = self.client.get_random_bytes()
         b2 = self.client.get_random_bytes()
-        self.assertTrue(isinstance(b1, six.binary_type))
+        self.assertTrue(isinstance(b1, binary_type))
         self.assertNotEqual(b1, b2)
 
     def test_resend_verify_code(self):
@@ -209,7 +209,7 @@ class TestCoreClientSession(unittest.TestCase):
     def test_get_random_bytes(self):
         b1 = self.session.get_random_bytes()
         b2 = self.session.get_random_bytes()
-        self.assertTrue(isinstance(b1, six.binary_type))
+        self.assertTrue(isinstance(b1, binary_type))
         self.assertNotEqual(b1, b2)
 
     def test_sign_certificate(self):
@@ -217,7 +217,7 @@ class TestCoreClientSession(unittest.TestCase):
         pubkey = browserid.tests.support.get_keypair(email)[0]
         cert = self.session.sign_certificate(pubkey)
         issuer = browserid.utils.decode_json_bytes(cert.split(".")[1])["iss"]
-        expected_issuer = urlparse.urlparse(self.client.server_url).hostname
+        expected_issuer = urlparse(self.client.server_url).hostname
         self.assertEqual(issuer, expected_issuer)
 
     def test_change_password(self):

@@ -4,7 +4,6 @@
 
 import os
 import re
-import unittest
 from binascii import unhexlify
 
 from fxa.crypto import (
@@ -16,6 +15,7 @@ from fxa.crypto import (
 )
 
 from fxa.tests.utils import (
+    unittest,
     mutate_one_byte,
     DUMMY_EMAIL,
     DUMMY_PASSWORD,
@@ -65,17 +65,18 @@ class TestCoreCrypto(unittest.TestCase):
     def test_bundle_and_unbundle(self):
         key = os.urandom(32)
         payload = os.urandom(47)
-        enc_payload = bundle(key, "test-namespace", payload)
-        self.assertEqual(payload, unbundle(key, "test-namespace", enc_payload))
+        enc_payload = bundle(key, b"test-namespace", payload)
+        dec_payload = unbundle(key, b"test-namespace", enc_payload)
+        self.assertEqual(payload, dec_payload)
         # Modified ciphertext should fail HMAC check.
         bad_enc_payload = mutate_one_byte(enc_payload)
         with self.assertRaises(Exception):
-            unbundle(key, "test-namespace", bad_enc_payload)
+            unbundle(key, b"test-namespace", bad_enc_payload)
 
     def test_xor(self):
-        self.assertEqual(xor("", ""), "")
-        self.assertEqual(xor("\x01", "\x01"), "\x00")
-        self.assertEqual(xor("\x01", "\x02"), "\x03")
-        self.assertEqual(xor("abc", "def"), "\x05\x07\x05")
+        self.assertEqual(xor(b"", ""), b"")
+        self.assertEqual(xor(b"\x01", b"\x01"), b"\x00")
+        self.assertEqual(xor(b"\x01", b"\x02"), b"\x03")
+        self.assertEqual(xor(b"abc", b"def"), b"\x05\x07\x05")
         with self.assertRaises(ValueError):
-            xor("shorter", "longer string")
+            xor(b"shorter", b"longer string")

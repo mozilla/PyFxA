@@ -2,9 +2,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from binascii import hexlify, unhexlify
+from binascii import unhexlify
 
-from fxa._utils import APIClient, HawkTokenAuth
+from six import string_types
+
+from fxa._utils import hexstr, APIClient, HawkTokenAuth
 from fxa.crypto import quick_stretch_password, derive_key, xor
 
 
@@ -19,7 +21,7 @@ class Client(object):
     def __init__(self, server_url=None):
         if server_url is None:
             server_url = DEFAULT_SERVER_URL
-        if isinstance(server_url, basestring):
+        if isinstance(server_url, string_types):
             self.server_url = server_url
             self.apiclient = APIClient(server_url)
         else:
@@ -31,7 +33,7 @@ class Client(object):
         stretchpwd = self._get_stretched_password(email, password, stretchpwd)
         body = {
             "email": email,
-            "authPW": hexlify(derive_key(stretchpwd, "authPW")),
+            "authPW": hexstr(derive_key(stretchpwd, "authPW")),
         }
         EXTRA_KEYS = ("service", "redirectTo", "resume", "preVerifyToken",
                       "preVerified")
@@ -61,7 +63,7 @@ class Client(object):
         stretchpwd = self._get_stretched_password(email, password, stretchpwd)
         body = {
             "email": email,
-            "authPW": hexlify(derive_key(stretchpwd, "authPW")),
+            "authPW": hexstr(derive_key(stretchpwd, "authPW")),
         }
         url = "/v1/account/login"
         if keys:
@@ -96,7 +98,7 @@ class Client(object):
         stretchpwd = self._get_stretched_password(email, password, stretchpwd)
         body = {
             "email": email,
-            "authPW": hexlify(derive_key(stretchpwd, "authPW")),
+            "authPW": hexstr(derive_key(stretchpwd, "authPW")),
         }
         url = "/v1/account/destroy"
         self.apiclient.post(url, body)
@@ -108,7 +110,7 @@ class Client(object):
     def reset_account(self, email, token, password=None, stretchpwd=None):
         stretchpwd = self._get_stretched_password(email, password, stretchpwd)
         body = {
-            "authPW": hexlify(derive_key(stretchpwd, "authPW")),
+            "authPW": hexstr(derive_key(stretchpwd, "authPW")),
         }
         url = "/v1/account/reset"
         auth = HawkTokenAuth(token, "accountResetToken", self.apiclient)
@@ -267,14 +269,14 @@ class Session(object):
     def start_password_change(self, stretchpwd):
         body = {
             "email": self.email,
-            "oldAuthPW": hexlify(derive_key(stretchpwd, "authPW")),
+            "oldAuthPW": hexstr(derive_key(stretchpwd, "authPW")),
         }
         return self.apiclient.post("/v1/password/change/start", body)
 
     def finish_password_change(self, token, stretchpwd, wrapkb):
         body = {
-            "authPW": hexlify(derive_key(stretchpwd, "authPW")),
-            "wrapKb": hexlify(wrapkb),
+            "authPW": hexstr(derive_key(stretchpwd, "authPW")),
+            "wrapKb": hexstr(wrapkb),
         }
         auth = HawkTokenAuth(token, "passwordChangeToken", self.apiclient)
         self.apiclient.post("/v1/password/change/finish", body, auth=auth)
