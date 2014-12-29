@@ -45,6 +45,45 @@ def uniq(size=10):
     return hexstr(os.urandom(size // 2 + 1))[:size]
 
 
+def scope_matches(provided, required):
+    """Check that required scopes match the ones provided. This is used during
+    token verification to raise errors if expected scopes are not met.
+
+    :note:
+
+        Sub-scopes are expressed using semi-colons.
+
+        A required sub-scope will always match if its root-scope is among
+        provided (e.g. ``profile:avatar`` will match ``profile`` is provided).
+
+    :param provided: list of scopes provided for the current token.
+    :param required: the scope required (e.g. by the application).
+    :returns: ``True`` if matches ``False`` otherwise.
+    """
+    if not required:
+        return True
+
+    if not isinstance(required, (list, tuple)):
+        required = [required]
+
+    split_subscope = lambda s: tuple((s.split(':') + [None])[:2])
+
+    provided = set([split_subscope(p) for p in provided])
+    required = set([split_subscope(r) for r in required])
+
+    root_provided = set([root for (root, sub) in provided])
+    root_required = set([root for (root, sub) in required])
+
+    if not root_required.issubset(root_provided):
+        return False
+
+    for (root, sub) in required:
+        if (root, None) in provided:
+            provided.add((root, sub))
+
+    return required.issubset(provided)
+
+
 class APIClient(object):
     """A requests.Session wrapper specialized for FxA API access.
 
@@ -208,7 +247,7 @@ class APIClient(object):
         # We do this automatically once per session in the hopes of avoiding
         # having to retry subsequent auth failures.  We do it *after* the retry
         # checking above, because it wrecks the "were we out of sync?" check.
-        if self._clockskew is None:
+        if self._clockskew is None and "timestamp" in resp.headers:
             try:
                 server_timestamp = int(resp.headers["timestamp"])
             except ValueError:

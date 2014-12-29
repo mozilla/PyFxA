@@ -7,13 +7,17 @@ It's highly experimental and subject to change.  Eventually, it is planned
 to provide easy support for the following features:
 
   * being a direct firefox accounts authentication client
-  * being an FxA OAuth Relier
   * being an FxA OAuth Service Provider
   * accessing attached services
 
 But none of that is ready yet; caveat emptor.
 
-Currently, basic auth-server operations should work like so::
+Firefox Accounts
+================
+
+Currently, basic auth-server operations should work like so:
+
+.. code-block:: python
 
     from fxa.core import Client
 
@@ -24,8 +28,43 @@ Currently, basic auth-server operations should work like so::
     cert = session.sign_certificate(myPublicKey)
     session.change_password("MySecretPassword", "ThisIsEvenMoreSecret")
 
+FxA OAuth Relier
+================
+
+Trade the authentication code against a longer lived OAuth token:
+
+.. code-block:: python
+
+    from fxa.oauth import Client
+
+    client = Client()
+    token = client.trade_token("client-id", "client-secret", "code-1234")
+
+
+Verify an OAuth token:
+
+.. code-block:: python
+
+    from fxa.oauth import Client
+    from fxa.errors import ClientError
+
+    client = Client()
+
+    try:
+        profile = client.verify_token("123456...")
+    except ClientError:
+        print "Invalid token"
+
+    print("User id", profile["user"])
+
+
+Testing email addresses
+=======================
+
 There's also very basic integration with restmail.net, to allow for
 testing with live email addresses.  It works like this:
+
+.. code-block:: python
 
     from fxa.core import Client
     from fxa.tests.utils import TestEmailAccount
@@ -46,5 +85,3 @@ testing with live email addresses.  It works like this:
     # Destroy the account once you're done with it.
     acct.clear()
     client.destroy_account(acct.email, "MySecretPassword")
-
-
