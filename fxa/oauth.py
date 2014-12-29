@@ -60,7 +60,7 @@ class Client(object):
         missing_attrs = ", ".join([k for k in ('user', 'scope', 'client_id')
                                    if k not in resp])
         if missing_attrs:
-            error_msg = '{} missing in OAuth response'.format(missing_attrs)
+            error_msg = '{0} missing in OAuth response'.format(missing_attrs)
             raise OutOfProtocolError(error_msg)
 
         authorized_scope = resp['scope']

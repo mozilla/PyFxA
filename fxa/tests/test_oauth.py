@@ -44,7 +44,7 @@ class TestClientTradeCode(unittest.TestCase):
             "code": "1234",
             "client_id": "abc"
         }
-        self.assertDictEqual(body, expected)
+        self.assertEqual(body, expected)
 
     def test_returns_access_token_given_by_server(self):
         self.assertEqual(self.token, "yeah")
@@ -55,10 +55,11 @@ class TestClientTradeCode(unittest.TestCase):
                       'https://server/v1/token',
                       body='{"missing": "token"}',
                       content_type='application/json')
-        with self.assertRaises(fxa.errors.OutOfProtocolError):
-            self.client.trade_code(client_id='abc',
-                                   client_secret='cake',
-                                   code='1234')
+        self.assertRaises(fxa.errors.OutOfProtocolError,
+                          self.client.trade_code,
+                          client_id='abc',
+                          client_secret='cake',
+                          code='1234')
 
 
 class TestAuthClientVerifyCode(unittest.TestCase):
@@ -87,7 +88,7 @@ class TestAuthClientVerifyCode(unittest.TestCase):
         expected = {
             "token": "abc",
         }
-        self.assertDictEqual(body, expected)
+        self.assertEqual(body, expected)
 
     def test_returns_response_given_by_server(self):
         expected = {
@@ -95,7 +96,7 @@ class TestAuthClientVerifyCode(unittest.TestCase):
             "scope": ["profile"],
             "client_id": "abc"
         }
-        self.assertDictEqual(self.verification, expected)
+        self.assertEqual(self.verification, expected)
 
     @responses.activate
     def test_raises_error_if_some_attributes_are_not_returned(self):
@@ -103,8 +104,9 @@ class TestAuthClientVerifyCode(unittest.TestCase):
                       'https://server/v1/verify',
                       body='{"missing": "attributes"}',
                       content_type='application/json')
-        with self.assertRaises(fxa.errors.OutOfProtocolError):
-            self.client.verify_token(token='1234')
+        self.assertRaises(fxa.errors.OutOfProtocolError,
+                          self.client.verify_token,
+                          token='1234')
 
     @responses.activate
     def test_raises_error_if_scopes_do_not_match(self):
@@ -113,8 +115,10 @@ class TestAuthClientVerifyCode(unittest.TestCase):
                       'https://server/v1/verify',
                       body=body,
                       content_type='application/json')
-        with self.assertRaises(fxa.errors.ScopeMismatchError):
-            self.client.verify_token(token='1234', scope='readinglist')
+        self.assertRaises(fxa.errors.ScopeMismatchError,
+                          self.client.verify_token,
+                          token='1234',
+                          scope='readinglist')
 
 
 class TestScopeMatch(unittest.TestCase):
