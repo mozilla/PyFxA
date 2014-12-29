@@ -2,6 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
+from six import string_types
+
 from fxa.errors import OutOfProtocolError, ScopeMismatchError
 from fxa._utils import APIClient, scope_matches
 
@@ -15,7 +17,7 @@ class Client(object):
     def __init__(self, server_url=None):
         if server_url is None:
             server_url = DEFAULT_SERVER_URL
-        if isinstance(server_url, basestring):
+        if isinstance(server_url, string_types):
             self.apiclient = APIClient(server_url)
         else:
             self.apiclient = server_url
