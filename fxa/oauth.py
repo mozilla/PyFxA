@@ -2,8 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from fxa.errors import OutOfProtocolError
-from fxa._utils import APIClient
+from fxa.errors import OutOfProtocolError, ScopeMismatchError
+from fxa._utils import APIClient, scope_matches
 
 
 DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com"
@@ -41,10 +41,11 @@ class Client(object):
 
         return resp['access_token']
 
-    def verify_token(self, token):
+    def verify_token(self, token, scope=None):
         """Verify a OAuth token, and retrieve user id and scopes.
 
         :param token: the string to verify.
+        :param scope: optional scope expected to be provided for this token.
         :returns: a dict with user id and authorized scopes for this token.
         :raises fxa.errors.ClientError: if the provided token is invalid.
         """
@@ -59,5 +60,9 @@ class Client(object):
         if missing_attrs:
             error_msg = '{} missing in OAuth response'.format(missing_attrs)
             raise OutOfProtocolError(error_msg)
+
+        authorized_scope = resp['scope']
+        if not scope_matches(authorized_scope, scope):
+            raise ScopeMismatchError(authorized_scope, scope)
 
         return resp

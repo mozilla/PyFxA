@@ -8,7 +8,7 @@ import json
 import responses
 
 import fxa.errors
-from fxa.oauth import Client
+from fxa.oauth import Client, scope_matches
 
 
 TEST_SERVER_URL = "https://server"
@@ -105,3 +105,46 @@ class TestAuthClientVerifyCode(unittest.TestCase):
                       content_type='application/json')
         with self.assertRaises(fxa.errors.OutOfProtocolError):
             self.client.verify_token(token='1234')
+
+    @responses.activate
+    def test_raises_error_if_scopes_do_not_match(self):
+        body = '{"user": "alice", "scope": ["files"], "client_id": "abc"}'
+        responses.add(responses.POST,
+                      'https://server/v1/verify',
+                      body=body,
+                      content_type='application/json')
+        with self.assertRaises(fxa.errors.ScopeMismatchError):
+            self.client.verify_token(token='1234', scope='readinglist')
+
+
+class TestScopeMatch(unittest.TestCase):
+    def test_always_matches_if_required_is_empty(self):
+        self.assertTrue(scope_matches(['abc'], []))
+        self.assertTrue(scope_matches(['abc'], None))
+        self.assertTrue(scope_matches(['abc'], ''))
+
+    def test_do_not_match_if_root_scopes_are_different(self):
+        self.assertFalse(scope_matches(['abc'], 'def'))
+        self.assertFalse(scope_matches(['abc'], ['def']))
+
+    def test_matches_if_root_scopes_are_the_same(self):
+        self.assertTrue(scope_matches(['abc', 'def'], 'abc'))
+        self.assertTrue(scope_matches(['abc', 'def'], ['abc']))
+
+    def test_matches_if_one_of_required_is_not_provided(self):
+        self.assertFalse(scope_matches(['abc'], ['abc', 'def']))
+
+    def test_matches_if_required_is_a_subscope(self):
+        self.assertTrue(scope_matches(['abc'], 'abc:xyz'))
+        self.assertTrue(scope_matches(['abc'], ['abc:xyz']))
+        self.assertTrue(scope_matches(['abc', 'def'], ['abc:xyz', 'def']))
+        self.assertTrue(scope_matches(['abc', 'def'], ['abc:xyz', 'def:123']))
+
+    def test_do_not_match_if_subscopes_do_not_match(self):
+        self.assertFalse(scope_matches(['abc:xyz'], 'abc:123'))
+        self.assertFalse(scope_matches(['abc:xyz'], ['abc:xyz', 'abc:123']))
+
+    def test_do_not_match_if_provided_is_a_subscope(self):
+        self.assertFalse(scope_matches(['abc:xyz'], 'abc'))
+        self.assertFalse(scope_matches(['abc:xyz'], ['abc']))
+        self.assertFalse(scope_matches(['abc:xyz', 'def'], ['abc', 'def']))

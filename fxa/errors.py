@@ -49,3 +49,11 @@ class ClientError(InProtocolError):
 class ServerError(InProtocolError):
     """Base error class for in-protocol errors caused by server behaviour."""
     pass
+
+
+class ScopeMismatchError(InProtocolError):
+    """Error raised when the OAuth scopes do not match."""
+    def __init__(self, provided, required):
+        message = "{0} does not match {1}".format(provided, required)
+        details = dict(message=message)
+        super(ScopeMismatchError, self).__init__(details)
