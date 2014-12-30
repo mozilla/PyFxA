@@ -14,7 +14,9 @@ DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com"
 class Client(object):
     """Client for talking to the Firefox Accounts OAuth server"""
 
-    def __init__(self, server_url=None):
+    def __init__(self, client_id=None, client_secret=None, server_url=None):
+        self.client_id = client_id
+        self.client_secret = client_secret
         if server_url is None:
             server_url = DEFAULT_SERVER_URL
         if isinstance(server_url, string_types):
@@ -22,13 +24,18 @@ class Client(object):
         else:
             self.apiclient = server_url
 
-    def trade_code(self, client_id, client_secret, code):
+    def trade_code(self, code, client_id=None, client_secret=None):
         """Trade the authentication code for a longer lived token.
 
+        :param code: the authentication code from the oauth redirect dance.
         :param client_id: the string generated during FxA client registration.
         :param client_secret: the related secret string.
         :returns: a dict with user id and authorized scopes for this token.
         """
+        if client_id is None:
+            client_id = self.client_id
+        if client_secret is None:
+            client_secret = self.client_secret
         url = '/v1/token'
         body = {
             'code': code,

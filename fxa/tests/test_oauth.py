@@ -21,7 +21,7 @@ class TestClientTradeCode(unittest.TestCase):
 
     @responses.activate
     def setUp(self):
-        self.client = Client(self.server_url)
+        self.client = Client('abc', 'cake', self.server_url)
 
         body = '{"access_token": "yeah"}'
         responses.add(responses.POST,
@@ -29,9 +29,7 @@ class TestClientTradeCode(unittest.TestCase):
                       body=body,
                       content_type='application/json')
 
-        self.token = self.client.trade_code(client_id='abc',
-                                            client_secret='cake',
-                                            code='1234')
+        self.token = self.client.trade_code('1234')
         self.response = responses.calls[0]
 
     def test_reaches_server_on_token_url(self):
@@ -69,7 +67,7 @@ class TestAuthClientVerifyCode(unittest.TestCase):
 
     @responses.activate
     def setUp(self):
-        self.client = Client(self.server_url)
+        self.client = Client(server_url=self.server_url)
 
         body = '{"user": "alice", "scope": ["profile"], "client_id": "abc"}'
         responses.add(responses.POST,
