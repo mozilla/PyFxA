@@ -51,9 +51,18 @@ class ServerError(InProtocolError):
     pass
 
 
-class ScopeMismatchError(InProtocolError):
+class TrustError(Error):
+    """Base error class for security conditions being violated.
+
+    Examples might include a bad signature on some data, a mismatched
+    audience on an assertion, or a missing scope on an OAuth token.
+    """
+    pass
+
+
+class ScopeMismatchError(TrustError):
     """Error raised when the OAuth scopes do not match."""
+
     def __init__(self, provided, required):
-        message = "{0} does not match {1}".format(provided, required)
-        details = dict(message=message)
-        super(ScopeMismatchError, self).__init__(details)
+        message = "scope {0} does not match {1}".format(provided, required)
+        super(ScopeMismatchError, self).__init__(message)
