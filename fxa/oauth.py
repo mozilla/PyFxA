@@ -64,8 +64,9 @@ class Client(object):
             error_msg = '{0} missing in OAuth response'.format(missing_attrs)
             raise OutOfProtocolError(error_msg)
 
-        authorized_scope = resp['scope']
-        if not scope_matches(authorized_scope, scope):
-            raise ScopeMismatchError(authorized_scope, scope)
+        if scope is not None:
+            authorized_scope = resp['scope']
+            if not scope_matches(authorized_scope, scope):
+                raise ScopeMismatchError(authorized_scope, scope)
 
         return resp

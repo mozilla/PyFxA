@@ -60,9 +60,6 @@ def scope_matches(provided, required):
     :param required: the scope required (e.g. by the application).
     :returns: ``True`` if all required scopes are provided, ``False`` if not.
     """
-    if not required:
-        return True
-
     if not isinstance(required, (list, tuple)):
         required = [required]
 

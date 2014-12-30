@@ -2,13 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import unittest
 import json
 
 import responses
 
 import fxa.errors
 from fxa.oauth import Client, scope_matches
+
+from fxa.tests.utils import unittest
 
 
 TEST_SERVER_URL = "https://server"
@@ -124,8 +125,11 @@ class TestAuthClientVerifyCode(unittest.TestCase):
 class TestScopeMatch(unittest.TestCase):
     def test_always_matches_if_required_is_empty(self):
         self.assertTrue(scope_matches(['abc'], []))
-        self.assertTrue(scope_matches(['abc'], None))
-        self.assertTrue(scope_matches(['abc'], ''))
+
+    def test_do_not_match_if_invalid_scope_provided(self):
+        self.assertFalse(scope_matches(['abc'], ''))
+        with self.assertRaises(Exception):
+            scope_matches(['abc'], None)
 
     def test_do_not_match_if_root_scopes_are_different(self):
         self.assertFalse(scope_matches(['abc'], 'def'))
