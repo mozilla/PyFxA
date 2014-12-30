@@ -12,7 +12,7 @@ DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com"
 
 
 class Client(object):
-    """Client for talking to the Firefox OAuth server"""
+    """Client for talking to the Firefox Accounts OAuth server"""
 
     def __init__(self, server_url=None):
         if server_url is None:
@@ -44,12 +44,13 @@ class Client(object):
         return resp['access_token']
 
     def verify_token(self, token, scope=None):
-        """Verify a OAuth token, and retrieve user id and scopes.
+        """Verify an OAuth token, and retrieve user id and scopes.
 
         :param token: the string to verify.
         :param scope: optional scope expected to be provided for this token.
         :returns: a dict with user id and authorized scopes for this token.
         :raises fxa.errors.ClientError: if the provided token is invalid.
+        :raises fxa.errors.TrustError: if the token scopes do not match.
         """
         url = '/v1/verify'
         body = {
