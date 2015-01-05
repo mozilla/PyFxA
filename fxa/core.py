@@ -107,6 +107,42 @@ class Client(object):
         # XXX TODO: sanity-check the schema of the returned response
         return unhexlify(self.apiclient.post("/v1/get_random_bytes")["data"])
 
+    def fetch_keys(self, key_fetch_token, stretchpwd):
+        url = "/v1/account/keys"
+        auth = HawkTokenAuth(key_fetch_token, "keyFetchToken", self.apiclient)
+        resp = self.apiclient.get(url, auth=auth)
+        bundle = unhexlify(resp["bundle"])
+        keys = auth.unbundle("account/keys", bundle)
+        unwrap_key = derive_key(stretchpwd, "unwrapBkey")
+        return (keys[:32], xor(keys[32:], unwrap_key))
+
+    def change_password(self, email, oldpwd=None, newpwd=None,
+                        oldstretchpwd=None, newstretchpwd=None):
+        oldstretchpwd = self._get_stretched_password(email, oldpwd,
+                                                     oldstretchpwd)
+        newstretchpwd = self._get_stretched_password(email, newpwd,
+                                                     newstretchpwd)
+        resp = self.start_password_change(email, oldstretchpwd)
+        keys = self.fetch_keys(resp["keyFetchToken"], oldstretchpwd)
+        token = resp["passwordChangeToken"]
+        new_wrapkb = xor(keys[1], derive_key(newstretchpwd, "unwrapBkey"))
+        self.finish_password_change(token, newstretchpwd, new_wrapkb)
+
+    def start_password_change(self, email, stretchpwd):
+        body = {
+            "email": email,
+            "oldAuthPW": hexstr(derive_key(stretchpwd, "authPW")),
+        }
+        return self.apiclient.post("/v1/password/change/start", body)
+
+    def finish_password_change(self, token, stretchpwd, wrapkb):
+        body = {
+            "authPW": hexstr(derive_key(stretchpwd, "authPW")),
+            "wrapKb": hexstr(wrapkb),
+        }
+        auth = HawkTokenAuth(token, "passwordChangeToken", self.apiclient)
+        self.apiclient.post("/v1/password/change/finish", body, auth=auth)
+
     def reset_account(self, email, token, password=None, stretchpwd=None):
         stretchpwd = self._get_stretched_password(email, password, stretchpwd)
         body = {
@@ -195,17 +231,9 @@ class Session(object):
             if stretchpwd is None:
                 # XXX TODO: what error?
                 raise RuntimeError("missing stretchpwd")
-        # Fetch the keys, and clear cached values from session construction.
-        url = "/v1/account/keys"
-        auth = HawkTokenAuth(key_fetch_token, "keyFetchToken", self.apiclient)
-        resp = self.apiclient.get(url, auth=auth)
+        self.keys = self.client.fetch_keys(key_fetch_token, stretchpwd)
         self._key_fetch_token = None
         self._stretchpwd = None
-        # Decrypt kB using the stretchpwd.
-        bundle = unhexlify(resp["bundle"])
-        keys = auth.unbundle("account/keys", bundle)
-        unwrap_key = derive_key(stretchpwd, "unwrapBkey")
-        self.keys = (keys[:32], xor(keys[32:], unwrap_key))
         return self.keys
 
     def check_session_status(self):
@@ -257,29 +285,16 @@ class Session(object):
         resp = self.apiclient.post(url, body, auth=self._auth)
         return resp["cert"]
 
-    def change_password(self, oldpwd, newpwd):
-        stretched_oldpwd = quick_stretch_password(self.email, oldpwd)
-        resp = self.start_password_change(stretched_oldpwd)
-        keys = self.fetch_keys(resp["keyFetchToken"], stretched_oldpwd)
-        token = resp["passwordChangeToken"]
-        stretched_newpwd = quick_stretch_password(self.email, newpwd)
-        new_wrapkb = xor(keys[1], derive_key(stretched_newpwd, "unwrapBkey"))
-        self.finish_password_change(token, stretched_newpwd, new_wrapkb)
+    def change_password(self, oldpwd, newpwd,
+                        oldstretchpwd=None, newstretchpwd=None):
+        return self.client.change_password(self.email, oldpwd, newpwd,
+                                           oldstretchpwd, newstretchpwd)
 
     def start_password_change(self, stretchpwd):
-        body = {
-            "email": self.email,
-            "oldAuthPW": hexstr(derive_key(stretchpwd, "authPW")),
-        }
-        return self.apiclient.post("/v1/password/change/start", body)
+        return self.client.start_password_change(self.email, stretchpwd)
 
     def finish_password_change(self, token, stretchpwd, wrapkb):
-        body = {
-            "authPW": hexstr(derive_key(stretchpwd, "authPW")),
-            "wrapKb": hexstr(wrapkb),
-        }
-        auth = HawkTokenAuth(token, "passwordChangeToken", self.apiclient)
-        self.apiclient.post("/v1/password/change/finish", body, auth=auth)
+        return self.client.finish_password_change(token, stretchpwd, wrapkb)
 
     def get_random_bytes(self):
         # XXX TODO: sanity-check the schema of the returned response
