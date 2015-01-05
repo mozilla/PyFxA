@@ -38,7 +38,7 @@ Trade the authentication code against a longer lived OAuth token:
     from fxa.oauth import Client
 
     client = Client()
-    token = client.trade_token("client-id", "client-secret", "code-1234")
+    token = client.trade_code("client-id", "client-secret", "code-1234")
 
 
 Verify an OAuth token:
