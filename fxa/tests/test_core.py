@@ -235,3 +235,12 @@ class TestCoreClientSession(unittest.TestCase):
         # Check that encryption keys have been preserved.
         session2.fetch_keys()
         self.assertEquals(self.session.keys, session2.keys)
+
+    def test_get_identity_assertion(self):
+        assertion = self.session.get_identity_assertion("http://example.com")
+        data = browserid.verify(assertion, audience="http://example.com")
+        self.assertEquals(data["status"], "okay")
+        expected_issuer = urlparse(self.session.server_url).hostname
+        self.assertEquals(data["issuer"], expected_issuer)
+        expected_email = "{0}@{1}".format(self.session.uid, expected_issuer)
+        self.assertEquals(data["email"], expected_email)
