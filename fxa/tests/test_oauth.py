@@ -60,6 +60,23 @@ class TestClientTradeCode(unittest.TestCase):
                           client_secret='cake',
                           code='1234')
 
+    @responses.activate
+    def test_trade_token_can_take_client_credentials_as_arguments(self):
+        responses.add(responses.POST,
+                      'https://server/v1/token',
+                      body='{"access_token": "tokay"}',
+                      content_type='application/json')
+        # As positional arguments.
+        token = self.client.trade_code('1234', 'abc', 'cake')
+        self.assertEqual(token, "tokay")
+        # As keyword arguments.
+        token = self.client.trade_code(
+            code='1234',
+            client_id='abc',
+            client_secret='cake'
+        )
+        self.assertEqual(token, "tokay")
+
 
 class TestAuthClientVerifyCode(unittest.TestCase):
 
