@@ -53,16 +53,13 @@ def scope_matches(provided, required):
 
         Sub-scopes are expressed using semi-colons.
 
-        A required sub-scope will always match if its root-scope is among
-        provided (e.g. ``profile:avatar`` will match ``profile`` is provided).
+        A required sub-scope will always match if its root-scope is among those
+        provided (e.g. ``profile:avatar`` will match ``profile`` if provided).
 
     :param provided: list of scopes provided for the current token.
     :param required: the scope required (e.g. by the application).
-    :returns: ``True`` if matches ``False`` otherwise.
+    :returns: ``True`` if all required scopes are provided, ``False`` if not.
     """
-    if not required:
-        return True
-
     if not isinstance(required, (list, tuple)):
         required = [required]
 
