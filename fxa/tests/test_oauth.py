@@ -11,6 +11,8 @@ from fxa.oauth import Client, scope_matches
 
 from fxa.tests.utils import unittest
 
+from six.moves.urllib.parse import urlparse, parse_qs
+
 
 TEST_SERVER_URL = "https://server/v1"
 
@@ -153,6 +155,155 @@ class TestAuthClientVerifyCode(unittest.TestCase):
                           self.client.verify_token,
                           token='1234',
                           scope='readinglist')
+
+
+class TestOAuthClientRedirectURL(unittest.TestCase):
+
+    server_url = TEST_SERVER_URL
+
+    @responses.activate
+    def setUp(self):
+        self.client = Client("abcdef", server_url=self.server_url)
+
+    def test_redirect_url_with_default_arguments(self):
+        redirect_url = urlparse(self.client.get_redirect_url())
+        server_url = urlparse(self.server_url)
+        self.assertEqual(redirect_url.hostname, server_url.hostname)
+        self.assertEqual(redirect_url.path,
+                         server_url.path + "/authorization")
+        params = parse_qs(redirect_url.query, keep_blank_values=True)
+        self.assertEqual(sorted(params.keys()), ["client_id", "state"])
+        self.assertEqual(params["client_id"][0], self.client.client_id)
+        self.assertEqual(params["state"][0], "")
+
+    def test_redirect_url_takes_custom_client_id(self):
+        redirect_url = urlparse(self.client.get_redirect_url(client_id="XX"))
+        params = parse_qs(redirect_url.query, keep_blank_values=True)
+        self.assertEqual(sorted(params.keys()), ["client_id", "state"])
+        self.assertEqual(params["client_id"][0], "XX")
+
+    def test_redirect_url_takes_custom_url_parameters(self):
+        redirect_url = urlparse(self.client.get_redirect_url(
+            state="applicationstate",
+            redirect_uri="https://my.site/oauth",
+            scope="profile profile:email",
+            action="signup",
+            email="test@example.com",
+        ))
+        server_url = urlparse(self.server_url)
+        self.assertEqual(redirect_url.hostname, server_url.hostname)
+        params = parse_qs(redirect_url.query, keep_blank_values=True)
+        all_params = ["action", "email", "client_id", "redirect_uri",
+                      "scope", "state"]
+        self.assertEqual(sorted(params.keys()), sorted(all_params))
+        self.assertEqual(params["client_id"][0], self.client.client_id)
+        self.assertEqual(params["state"][0], "applicationstate")
+        self.assertEqual(params["redirect_uri"][0], "https://my.site/oauth")
+        self.assertEqual(params["scope"][0], "profile profile:email")
+        self.assertEqual(params["action"][0], "signup")
+        self.assertEqual(params["email"][0], "test@example.com")
+
+
+class TestAuthClientAuthorizeCode(unittest.TestCase):
+
+    server_url = TEST_SERVER_URL
+
+    def setUp(self):
+        self.client = Client("abc", "xyz", server_url=self.server_url)
+        body = '{"redirect": "https://relier/page?code=qed&state=blah"}'
+        responses.add(responses.POST,
+                      'https://server/v1/authorization',
+                      body=body,
+                      content_type='application/json')
+
+    @responses.activate
+    def test_authorize_code_with_default_arguments(self):
+        assertion = "A_FAKE_ASSERTION"
+        code = self.client.authorize_code(assertion)
+        self.assertEquals(code, "qed")
+        req_body = json.loads(responses.calls[0].request.body)
+        self.assertEquals(req_body, {
+            "assertion": assertion,
+            "client_id": self.client.client_id,
+            "state": "x",
+        })
+
+    @responses.activate
+    def test_authorize_code_with_explicit_scope(self):
+        assertion = "A_FAKE_ASSERTION"
+        code = self.client.authorize_code(assertion, scope="profile:email")
+        self.assertEquals(code, "qed")
+        req_body = json.loads(responses.calls[0].request.body)
+        self.assertEquals(req_body, {
+            "assertion": assertion,
+            "client_id": self.client.client_id,
+            "state": "x",
+            "scope": "profile:email",
+        })
+
+    @responses.activate
+    def test_authorize_code_with_explicit_client_id(self):
+        assertion = "A_FAKE_ASSERTION"
+        code = self.client.authorize_code(assertion, client_id="cba")
+        self.assertEquals(code, "qed")
+        req_body = json.loads(responses.calls[0].request.body)
+        self.assertEquals(req_body, {
+            "assertion": assertion,
+            "client_id": "cba",
+            "state": "x",
+        })
+
+
+class TestAuthClientAuthorizeToken(unittest.TestCase):
+
+    server_url = TEST_SERVER_URL
+
+    def setUp(self):
+        self.client = Client("abc", "xyz", server_url=self.server_url)
+        responses.add(responses.POST,
+                      'https://server/v1/authorization',
+                      body='{"access_token": "izatoken"}',
+                      content_type='application/json')
+
+    @responses.activate
+    def test_authorize_token_with_default_arguments(self):
+        assertion = "A_FAKE_ASSERTION"
+        token = self.client.authorize_token(assertion)
+        self.assertEquals(token, "izatoken")
+        req_body = json.loads(responses.calls[0].request.body)
+        self.assertEquals(req_body, {
+            "assertion": assertion,
+            "client_id": self.client.client_id,
+            "state": "x",
+            "response_type": "token",
+        })
+
+    @responses.activate
+    def test_authorize_token_with_explicit_scope(self):
+        assertion = "A_FAKE_ASSERTION"
+        token = self.client.authorize_token(assertion, scope="storage")
+        self.assertEquals(token, "izatoken")
+        req_body = json.loads(responses.calls[0].request.body)
+        self.assertEquals(req_body, {
+            "assertion": assertion,
+            "client_id": self.client.client_id,
+            "state": "x",
+            "response_type": "token",
+            "scope": "storage",
+        })
+
+    @responses.activate
+    def test_authorize_token_with_explicit_client_id(self):
+        assertion = "A_FAKE_ASSERTION"
+        token = self.client.authorize_token(assertion, client_id="cba")
+        self.assertEquals(token, "izatoken")
+        req_body = json.loads(responses.calls[0].request.body)
+        self.assertEquals(req_body, {
+            "assertion": assertion,
+            "client_id": "cba",
+            "state": "x",
+            "response_type": "token",
+        })
 
 
 class TestScopeMatch(unittest.TestCase):

@@ -153,4 +153,4 @@ def generate_keypair():
     }
     private_key = browserid.jwt.DS128Key(data)
     del data["x"]
-    return (data, private_key)
+    return data, private_key
