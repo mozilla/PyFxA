@@ -36,7 +36,7 @@ class Client(object):
             client_id = self.client_id
         if client_secret is None:
             client_secret = self.client_secret
-        url = '/v1/token'
+        url = '/token'
         body = {
             'code': code,
             'client_id': client_id,
@@ -59,7 +59,7 @@ class Client(object):
         :raises fxa.errors.ClientError: if the provided token is invalid.
         :raises fxa.errors.TrustError: if the token scopes do not match.
         """
-        url = '/v1/verify'
+        url = '/verify'
         body = {
             'token': token
         }

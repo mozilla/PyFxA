@@ -12,7 +12,7 @@ from fxa.oauth import Client, scope_matches
 from fxa.tests.utils import unittest
 
 
-TEST_SERVER_URL = "https://server"
+TEST_SERVER_URL = "https://server/v1"
 
 
 class TestClientTradeCode(unittest.TestCase):
