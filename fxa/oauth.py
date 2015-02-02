@@ -8,7 +8,7 @@ from fxa.errors import OutOfProtocolError, ScopeMismatchError
 from fxa._utils import APIClient, scope_matches
 
 
-DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com"
+DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com/v1"
 
 
 class Client(object):
