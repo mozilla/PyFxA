@@ -9,6 +9,7 @@ from fxa._utils import APIClient, scope_matches
 
 
 DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com/v1"
+DEFAULT_VERSION_SUFFIX = "/v1"
 
 
 class Client(object):
@@ -19,6 +20,9 @@ class Client(object):
         self.client_secret = client_secret
         if server_url is None:
             server_url = DEFAULT_SERVER_URL
+        server_url = server_url.rstrip('/')
+        if not server_url.endswith(DEFAULT_VERSION_SUFFIX):
+            server_url += DEFAULT_VERSION_SUFFIX
         if isinstance(server_url, string_types):
             self.apiclient = APIClient(server_url)
         else:

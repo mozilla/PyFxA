@@ -15,6 +15,24 @@ from fxa.tests.utils import unittest
 TEST_SERVER_URL = "https://server/v1"
 
 
+class TestClientServerUrl(unittest.TestCase):
+    def test_trailing_slash_without_prefix_added_prefix(self):
+        client = Client('abc', 'cake', "https://server/")
+        self.assertEqual(client.apiclient.server_url, TEST_SERVER_URL)
+
+    def test_without_prefix_added_prefix(self):
+        client = Client('abc', 'cake', "https://server")
+        self.assertEqual(client.apiclient.server_url, TEST_SERVER_URL)
+
+    def test_trailing_slash_with_prefix(self):
+        client = Client('abc', 'cake', "https://server/v1/")
+        self.assertEqual(client.apiclient.server_url, TEST_SERVER_URL)
+
+    def test_with_prefix(self):
+        client = Client('abc', 'cake', "https://server/v1")
+        self.assertEqual(client.apiclient.server_url, TEST_SERVER_URL)
+
+
 class TestClientTradeCode(unittest.TestCase):
 
     server_url = TEST_SERVER_URL
