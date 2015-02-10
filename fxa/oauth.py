@@ -8,7 +8,8 @@ from fxa.errors import OutOfProtocolError, ScopeMismatchError
 from fxa._utils import APIClient, scope_matches
 
 
-DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com"
+DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com/v1"
+VERSION_SUFFIXES = ("/v1",)
 
 
 class Client(object):
@@ -19,6 +20,9 @@ class Client(object):
         self.client_secret = client_secret
         if server_url is None:
             server_url = DEFAULT_SERVER_URL
+        server_url = server_url.rstrip('/')
+        if not server_url.endswith(VERSION_SUFFIXES):
+            server_url += VERSION_SUFFIXES[0]
         if isinstance(server_url, string_types):
             self.apiclient = APIClient(server_url)
         else:
@@ -36,7 +40,7 @@ class Client(object):
             client_id = self.client_id
         if client_secret is None:
             client_secret = self.client_secret
-        url = '/v1/token'
+        url = '/token'
         body = {
             'code': code,
             'client_id': client_id,
@@ -59,7 +63,7 @@ class Client(object):
         :raises fxa.errors.ClientError: if the provided token is invalid.
         :raises fxa.errors.TrustError: if the token scopes do not match.
         """
-        url = '/v1/verify'
+        url = '/verify'
         body = {
             'token': token
         }
