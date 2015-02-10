@@ -63,7 +63,8 @@ def scope_matches(provided, required):
     if not isinstance(required, (list, tuple)):
         required = [required]
 
-    split_subscope = lambda s: tuple((s.split(':') + [None])[:2])
+    def split_subscope(s):
+        return tuple((s.split(':') + [None])[:2])
 
     provided = set([split_subscope(p) for p in provided])
     required = set([split_subscope(r) for r in required])

@@ -100,7 +100,10 @@ class TestCoreClient(unittest.TestCase):
             stretchpwd=DUMMY_STRETCHED_PASSWORD,
         )
         self._accounts_to_delete.append(acct)
-        is_verify_email = lambda m: "x-verify-code" in m["headers"]
+
+        def is_verify_email(m):
+            return "x-verify-code" in m["headers"]
+
         m1 = acct.wait_for_email(is_verify_email)
         code1 = m1["headers"]["x-verify-code"]  # NOQA
         acct.clear()
