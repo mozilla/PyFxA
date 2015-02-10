@@ -10,7 +10,8 @@ from fxa._utils import hexstr, APIClient, HawkTokenAuth
 from fxa.crypto import quick_stretch_password, derive_key, xor
 
 
-DEFAULT_SERVER_URL = "https://api.accounts.firefox.com"
+DEFAULT_SERVER_URL = "https://api.accounts.firefox.com/v1"
+VERSION_SUFFIXES = ("/v1",)
 
 DEFAULT_CERT_DURATION = 1000 * 60 * 30  # half an hour, in milliseconds
 
@@ -21,12 +22,15 @@ class Client(object):
     def __init__(self, server_url=None):
         if server_url is None:
             server_url = DEFAULT_SERVER_URL
-        if isinstance(server_url, string_types):
-            self.server_url = server_url
-            self.apiclient = APIClient(server_url)
-        else:
+        if not isinstance(server_url, string_types):
             self.apiclient = server_url
             self.server_url = self.apiclient.server_url
+        else:
+            server_url = server_url.rstrip("/")
+            if not server_url.endswith(VERSION_SUFFIXES):
+                server_url += VERSION_SUFFIXES[0]
+            self.server_url = server_url
+            self.apiclient = APIClient(server_url)
 
     def create_account(self, email, password=None, stretchpwd=None, **kwds):
         keys = kwds.pop("keys", False)
@@ -43,7 +47,7 @@ class Client(object):
             else:
                 msg = "Unexpected keyword argument: {0}".format(extra)
                 raise TypeError(msg)
-        url = "/v1/account/create"
+        url = "/account/create"
         if keys:
             url += "?keys=true"
         resp = self.apiclient.post(url, body)
@@ -65,7 +69,7 @@ class Client(object):
             "email": email,
             "authPW": hexstr(derive_key(stretchpwd, "authPW")),
         }
-        url = "/v1/account/login"
+        url = "/account/login"
         if keys:
             url += "?keys=true"
         resp = self.apiclient.post(url, body)
@@ -92,7 +96,7 @@ class Client(object):
         return stretchpwd
 
     def get_account_status(self, uid):
-        return self.apiclient.get("/v1/account/status?uid=" + uid)
+        return self.apiclient.get("/account/status?uid=" + uid)
 
     def destroy_account(self, email, password=None, stretchpwd=None):
         stretchpwd = self._get_stretched_password(email, password, stretchpwd)
@@ -100,15 +104,15 @@ class Client(object):
             "email": email,
             "authPW": hexstr(derive_key(stretchpwd, "authPW")),
         }
-        url = "/v1/account/destroy"
+        url = "/account/destroy"
         self.apiclient.post(url, body)
 
     def get_random_bytes(self):
         # XXX TODO: sanity-check the schema of the returned response
-        return unhexlify(self.apiclient.post("/v1/get_random_bytes")["data"])
+        return unhexlify(self.apiclient.post("/get_random_bytes")["data"])
 
     def fetch_keys(self, key_fetch_token, stretchpwd):
-        url = "/v1/account/keys"
+        url = "/account/keys"
         auth = HawkTokenAuth(key_fetch_token, "keyFetchToken", self.apiclient)
         resp = self.apiclient.get(url, auth=auth)
         bundle = unhexlify(resp["bundle"])
@@ -133,7 +137,7 @@ class Client(object):
             "email": email,
             "oldAuthPW": hexstr(derive_key(stretchpwd, "authPW")),
         }
-        return self.apiclient.post("/v1/password/change/start", body)
+        return self.apiclient.post("/password/change/start", body)
 
     def finish_password_change(self, token, stretchpwd, wrapkb):
         body = {
@@ -141,14 +145,14 @@ class Client(object):
             "wrapKb": hexstr(wrapkb),
         }
         auth = HawkTokenAuth(token, "passwordChangeToken", self.apiclient)
-        self.apiclient.post("/v1/password/change/finish", body, auth=auth)
+        self.apiclient.post("/password/change/finish", body, auth=auth)
 
     def reset_account(self, email, token, password=None, stretchpwd=None):
         stretchpwd = self._get_stretched_password(email, password, stretchpwd)
         body = {
             "authPW": hexstr(derive_key(stretchpwd, "authPW")),
         }
-        url = "/v1/account/reset"
+        url = "/account/reset"
         auth = HawkTokenAuth(token, "accountResetToken", self.apiclient)
         self.apiclient.post(url, body, auth=auth)
 
@@ -162,7 +166,7 @@ class Client(object):
             else:
                 msg = "Unexpected keyword argument: {0}".format(extra)
                 raise TypeError(msg)
-        url = "/v1/password/forgot/send_code"
+        url = "/password/forgot/send_code"
         resp = self.apiclient.post(url, body)
         return PasswordForgotToken(
             self, email,
@@ -182,7 +186,7 @@ class Client(object):
             else:
                 msg = "Unexpected keyword argument: {0}".format(extra)
                 raise TypeError(msg)
-        url = "/v1/password/forgot/resend_code"
+        url = "/password/forgot/resend_code"
         auth = HawkTokenAuth(token, "passwordForgotToken", self.apiclient)
         return self.apiclient.post(url, body, auth=auth)
 
@@ -190,12 +194,12 @@ class Client(object):
         body = {
             "code": code,
         }
-        url = "/v1/password/forgot/verify_code"
+        url = "/password/forgot/verify_code"
         auth = HawkTokenAuth(token, "passwordForgotToken", self.apiclient)
         return self.apiclient.post(url, body, auth=auth)
 
     def get_reset_code_status(self, token):
-        url = "/v1/password/forgot/status"
+        url = "/password/forgot/status"
         auth = HawkTokenAuth(token, "passwordForgotToken", self.apiclient)
         return self.apiclient.get(url, auth=auth)
 
@@ -237,7 +241,7 @@ class Session(object):
         return self.keys
 
     def check_session_status(self):
-        url = "/v1/session/status"
+        url = "/session/status"
         # Raises an error if the session has expired etc.
         try:
             uid = self.apiclient.get(url, auth=self._auth)["uid"]
@@ -248,11 +252,11 @@ class Session(object):
             assert uid == self.uid
 
     def destroy_session(self):
-        url = "/v1/session/destroy"
+        url = "/session/destroy"
         self.apiclient.post(url, {}, auth=self._auth)
 
     def get_email_status(self):
-        url = "/v1/recovery_email/status"
+        url = "/recovery_email/status"
         resp = self.apiclient.get(url, auth=self._auth)
         self.verified = resp["verified"]
         return resp
@@ -262,7 +266,7 @@ class Session(object):
             "uid": self.uid,
             "code": code,
         }
-        url = "/v1/recovery_email/verify_code"
+        url = "/recovery_email/verify_code"
         self.apiclient.post(url, body)  # note: not authenticated
 
     def resend_email_code(self, **kwds):
@@ -273,7 +277,7 @@ class Session(object):
             else:
                 msg = "Unexpected keyword argument: {0}".format(extra)
                 raise TypeError(msg)
-        url = "/v1/recovery_email/resend_code"
+        url = "/recovery_email/resend_code"
         self.apiclient.post(url, body, auth=self._auth)
 
     def sign_certificate(self, public_key, duration=DEFAULT_CERT_DURATION):
@@ -281,7 +285,7 @@ class Session(object):
             "publicKey": public_key,
             "duration": duration,
         }
-        url = "/v1/certificate/sign"
+        url = "/certificate/sign"
         resp = self.apiclient.post(url, body, auth=self._auth)
         return resp["cert"]
 
