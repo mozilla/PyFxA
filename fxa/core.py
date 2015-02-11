@@ -6,8 +6,16 @@ from binascii import unhexlify
 
 from six import string_types
 
+import browserid.jwt
+import browserid.utils
+
 from fxa._utils import hexstr, APIClient, HawkTokenAuth
-from fxa.crypto import quick_stretch_password, derive_key, xor
+from fxa.crypto import (
+    quick_stretch_password,
+    generate_keypair,
+    derive_key,
+    xor
+)
 
 
 DEFAULT_SERVER_URL = "https://api.accounts.firefox.com/v1"
@@ -207,13 +215,15 @@ class Client(object):
 class Session(object):
 
     def __init__(self, client, email, stretchpwd, uid, token,
-                 key_fetch_token=None, verified=False, auth_timestamp=0):
+                 key_fetch_token=None, verified=False, auth_timestamp=0,
+                 cert_keypair=None):
         self.client = client
         self.email = email
         self.uid = uid
         self.token = token
         self.verified = verified
         self.auth_timestamp = auth_timestamp
+        self.cert_keypair = None
         self.keys = None
         self._auth = HawkTokenAuth(token, "sessionToken", self.apiclient)
         self._key_fetch_token = key_fetch_token
@@ -222,6 +232,10 @@ class Session(object):
     @property
     def apiclient(self):
         return self.client.apiclient
+
+    @property
+    def server_url(self):
+        return self.client.server_url
 
     def fetch_keys(self, key_fetch_token=None, stretchpwd=None):
         # Use values from session construction, if not overridden.
@@ -303,6 +317,30 @@ class Session(object):
     def get_random_bytes(self):
         # XXX TODO: sanity-check the schema of the returned response
         return self.client.get_random_bytes()
+
+    def get_identity_assertion(self, audience, duration=60, exp=None,
+                               keypair=None):
+        if exp is None:
+            exp = int((self.apiclient.server_curtime() + duration) * 1000)
+        if keypair is None:
+            keypair = self.cert_keypair
+            if keypair is None:
+                keypair = generate_keypair()
+                self.cert_keypair = keypair
+        public_key, private_key = keypair
+        # Get a signed identity certificate for the public key.
+        # XXX TODO: cache this for future re-use?
+        # For now we just get a fresh signature every time, which is
+        # perfectly valid but costly if done frequently.
+        cert = self.sign_certificate(public_key)
+        # Generate assertion using the private key.
+        assertion = {
+            "exp": exp,
+            "aud": audience,
+        }
+        assertion = browserid.jwt.generate(assertion, private_key)
+        # Bundle them into a full BrowserID assertion.
+        return browserid.utils.bundle_certs_and_assertion([cert], assertion)
 
 
 class PasswordForgotToken(object):
