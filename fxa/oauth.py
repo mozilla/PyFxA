@@ -1,7 +1,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
+import json
 import time
+
 from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
@@ -183,7 +185,7 @@ class Client(object):
 class MemoryCache(object):
     """Simple Memory cache that caches the object in the memory."""
 
-    def __init__(self, ttl):
+    def __init__(self, ttl=None):
         self.ttl = ttl
         if not self.ttl:
             self.ttl = DEFAULT_CACHE_EXPIRACY
@@ -191,8 +193,8 @@ class MemoryCache(object):
         self.expires_at = {}
 
     def get(self, key):
-        value = self.cache.get(key, None)
-        expires_at = self.expires_at(key, None)
+        value = self.cache.get(key)
+        expires_at = self.expires_at.get(key)
         if expires_at and expires_at > time.time():
             return value
         else:
@@ -224,9 +226,10 @@ class CachedClient(Client):
     def verify_token(self, token, scope=None):
         key = 'fxa.oauth.verify_token:%s:%s' % (token, scope)
         resp = self.cache.get(key)
-
-        if not resp:
+        if resp is None:
             resp = super(CachedClient, self).verify_token(token, scope)
-            self.cache.set(key, resp)
+            self.cache.set(key, json.dumps(resp).encode('utf-8'))
+        else:
+            resp = json.loads(resp.decode('utf-8'))
 
         return resp
