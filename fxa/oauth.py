@@ -207,7 +207,7 @@ class MemoryCache(object):
             del self.expires_at[key]
 
     def _cleanup(self):
-        for key, expires_at in self.expires_at.items():
+        for key, expires_at in list(self.expires_at.items()):
             if expires_at < time.time():
                 self.delete(key)
 
