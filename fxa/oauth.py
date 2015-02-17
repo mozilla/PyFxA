@@ -1,7 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-
+import time
 from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
@@ -11,6 +11,7 @@ from fxa._utils import APIClient, scope_matches
 
 DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com/v1"
 VERSION_SUFFIXES = ("/v1",)
+DEFAULT_CACHE_EXPIRACY = 300
 
 
 class Client(object):
@@ -124,7 +125,7 @@ class Client(object):
         """Trade an identity assertion for an oauth token.
 
         This method takes an identity assertion for a user and uses it to
-        generate an oauth token.  The client_id must have implicit grant
+        generate an oauth token. The client_id must have implicit grant
         privileges.
 
         :param assertion: an identity assertion for the target user.
@@ -175,5 +176,57 @@ class Client(object):
             authorized_scope = resp['scope']
             if not scope_matches(authorized_scope, scope):
                 raise ScopeMismatchError(authorized_scope, scope)
+
+        return resp
+
+
+class MemoryCache(object):
+    """Simple Memory cache that caches the object in the memory."""
+
+    def __init__(self, ttl):
+        self.ttl = ttl
+        if not self.ttl:
+            self.ttl = DEFAULT_CACHE_EXPIRACY
+        self.cache = {}
+        self.expires_at = {}
+
+    def get(self, key):
+        value = self.cache.get(key, None)
+        expires_at = self.expires_at(key, None)
+        if expires_at and expires_at > time.time():
+            return value
+        else:
+            self.delete(key)
+
+    def set(self, key, value):
+        self.cache[key] = value
+        self.expires_at[key] = time.time() + self.ttl
+
+    def delete(self, key):
+        if key in self.cache:
+            del self.cache[key]
+
+        if key in self.expires_at:
+            del self.expires_at[key]
+
+
+class CachedClient(Client):
+    """Simple cache client that uses the cache to cache the data."""
+
+    def __init__(self, cache=None, ttl=None, *args, **kwargs):
+        self.cache = cache
+
+        if not self.cache:
+            self.cache = MemoryCache(ttl)
+
+        super(CachedClient, self).__init__(*args, **kwargs)
+
+    def verify_token(self, token, scope=None):
+        key = 'fxa.oauth.verify_token:%s:%s' % (token, scope)
+        resp = self.cache.get(key)
+
+        if not resp:
+            resp = super(CachedClient, self).verify_token(token, scope)
+            self.cache.set(key, resp)
 
         return resp
