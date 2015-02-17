@@ -183,22 +183,17 @@ class Client(object):
 
 
 class MemoryCache(object):
-    """Simple Memory cache that caches the object in the memory."""
+    """Simple Memory cache."""
 
-    def __init__(self, ttl=None):
+    def __init__(self, ttl=DEFAULT_CACHE_EXPIRACY):
         self.ttl = ttl
-        if not self.ttl:
-            self.ttl = DEFAULT_CACHE_EXPIRACY
         self.cache = {}
         self.expires_at = {}
 
     def get(self, key):
+        self._cleanup()
         value = self.cache.get(key)
-        expires_at = self.expires_at.get(key)
-        if expires_at and expires_at > time.time():
-            return value
-        else:
-            self.delete(key)
+        return value
 
     def set(self, key, value):
         self.cache[key] = value
@@ -211,11 +206,17 @@ class MemoryCache(object):
         if key in self.expires_at:
             del self.expires_at[key]
 
+    def _cleanup(self):
+        for key, expires_at in self.expires_at.items():
+            if expires_at < time.time():
+                self.delete(key)
+
 
 class CachedClient(Client):
-    """Simple cache client that uses the cache to cache the data."""
+    """Client caching distant token verification."""
 
-    def __init__(self, cache=None, ttl=None, *args, **kwargs):
+    def __init__(self, cache=None, ttl=DEFAULT_CACHE_EXPIRACY,
+                 *args, **kwargs):
         self.cache = cache
 
         if not self.cache:
