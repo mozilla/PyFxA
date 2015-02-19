@@ -8,7 +8,7 @@ import responses
 import time
 
 import fxa.errors
-from fxa.oauth import Client, scope_matches, MemoryCache, CachedClient
+from fxa.oauth import Client, scope_matches, MemoryCache
 
 from fxa.tests.utils import unittest
 
@@ -362,7 +362,7 @@ class TestCachedClient(unittest.TestCase):
     server_url = TEST_SERVER_URL
 
     def setUp(self):
-        self.client = CachedClient(server_url=self.server_url)
+        self.client = Client(server_url=self.server_url)
         self.body = ('{"user": "alice", "scope": ["profile"],'
                      '"client_id": "abc"}')
         responses.add(responses.POST,
@@ -376,9 +376,13 @@ class TestCachedClient(unittest.TestCase):
 
     def test_can_change_default_cache(self):
         cache = MemoryCache(0.01)
-        self.client = CachedClient(cache)
+        self.client = Client(cache=cache)
         self.assertEqual(self.client.cache, cache)
         self.assertEqual(self.client.cache.ttl, 0.01)
+
+    def test_can_deactivate_cache(self):
+        self.client = Client(cache=None)
+        self.assertIsNone(self.client.cache)
 
     @responses.activate
     def test_client_verify_code_is_cached(self):
@@ -399,3 +403,14 @@ class TestCachedClient(unittest.TestCase):
                 verification = self.client.verify_token(token='abc')
                 self.assertFalse(mocked_set.called)
                 self.assertDictEqual(verification, json.loads(self.body))
+
+    @responses.activate
+    def test_client_verify_code_cached_value_is_not_used_if_no_cache(self):
+        self.client = Client(cache=None, server_url=self.server_url)
+        # First call
+        verification = self.client.verify_token(token='abc')
+        self.assertDictEqual(verification, json.loads(self.body))
+
+        # Second call
+        verification = self.client.verify_token(token='abc')
+        self.assertDictEqual(verification, json.loads(self.body))

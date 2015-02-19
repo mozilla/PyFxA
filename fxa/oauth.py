@@ -19,7 +19,8 @@ DEFAULT_CACHE_EXPIRACY = 300
 class Client(object):
     """Client for talking to the Firefox Accounts OAuth server"""
 
-    def __init__(self, client_id=None, client_secret=None, server_url=None):
+    def __init__(self, client_id=None, client_secret=None, server_url=None,
+                 cache=True, ttl=DEFAULT_CACHE_EXPIRACY):
         self.client_id = client_id
         self.client_secret = client_secret
         if server_url is None:
@@ -31,6 +32,10 @@ class Client(object):
             self.apiclient = APIClient(server_url)
         else:
             self.apiclient = server_url
+
+        self.cache = cache
+        if self.cache is True:
+            self.cache = MemoryCache(ttl)
 
     @property
     def server_url(self):
@@ -162,22 +167,36 @@ class Client(object):
         :raises fxa.errors.ClientError: if the provided token is invalid.
         :raises fxa.errors.TrustError: if the token scopes do not match.
         """
-        url = '/verify'
-        body = {
-            'token': token
-        }
-        resp = self.apiclient.post(url, body)
+        key = 'fxa.oauth.verify_token:%s:%s' % (token, scope)
+        if self.cache is not None:
+            resp = self.cache.get(key)
+        else:
+            resp = None
 
-        missing_attrs = ", ".join([k for k in ('user', 'scope', 'client_id')
-                                   if k not in resp])
-        if missing_attrs:
-            error_msg = '{0} missing in OAuth response'.format(missing_attrs)
-            raise OutOfProtocolError(error_msg)
+        if resp is None:
+            url = '/verify'
+            body = {
+                'token': token
+            }
+            resp = self.apiclient.post(url, body)
 
-        if scope is not None:
-            authorized_scope = resp['scope']
-            if not scope_matches(authorized_scope, scope):
-                raise ScopeMismatchError(authorized_scope, scope)
+            missing_attrs = ", ".join([
+                k for k in ('user', 'scope', 'client_id') if k not in resp
+            ])
+            if missing_attrs:
+                error_msg = '{0} missing in OAuth response'.format(
+                    missing_attrs)
+                raise OutOfProtocolError(error_msg)
+
+            if scope is not None:
+                authorized_scope = resp['scope']
+                if not scope_matches(authorized_scope, scope):
+                    raise ScopeMismatchError(authorized_scope, scope)
+
+            if self.cache is not None:
+                self.cache.set(key, json.dumps(resp).encode('utf-8'))
+        else:
+            resp = json.loads(resp.decode('utf-8'))
 
         return resp
 
@@ -210,27 +229,3 @@ class MemoryCache(object):
         for key, expires_at in list(self.expires_at.items()):
             if expires_at < time.time():
                 self.delete(key)
-
-
-class CachedClient(Client):
-    """Client caching distant token verification."""
-
-    def __init__(self, cache=None, ttl=DEFAULT_CACHE_EXPIRACY,
-                 *args, **kwargs):
-        self.cache = cache
-
-        if not self.cache:
-            self.cache = MemoryCache(ttl)
-
-        super(CachedClient, self).__init__(*args, **kwargs)
-
-    def verify_token(self, token, scope=None):
-        key = 'fxa.oauth.verify_token:%s:%s' % (token, scope)
-        resp = self.cache.get(key)
-        if resp is None:
-            resp = super(CachedClient, self).verify_token(token, scope)
-            self.cache.set(key, json.dumps(resp).encode('utf-8'))
-        else:
-            resp = json.loads(resp.decode('utf-8'))
-
-        return resp
