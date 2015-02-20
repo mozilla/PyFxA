@@ -1,4 +1,16 @@
-PENDING
+v0.0.3
 =======
 
- * Initial release.
+ * Refacotor oauth.Client to take id/secret as constructor args.
+ * Add basic caching on oauth token verification.
+ * Accept option "/v1" suffix on server URLs.
+ * Add get_identity_assertion() method to core.Session.
+ * Add methods to oauth.Client for authorizing codes and tokens.
+ * Add a new error hierarchy for trust-related errors.
+ * Additional sanity-checking in oauth scope checks.
+
+
+v0.0.2
+=======
+
+ * Initial release; includes basic auth and oauth functionality.
