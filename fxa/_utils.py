@@ -13,6 +13,7 @@ etc as we go.  So don't import any of it outside of this package.
 import os
 import time
 import hashlib
+import hmac
 from binascii import hexlify, unhexlify
 from base64 import b64encode
 try:
@@ -43,6 +44,13 @@ else:
 def uniq(size=10):
     """Generate a short random hex string."""
     return hexstr(os.urandom(size // 2 + 1))[:size]
+
+
+def get_hmac(data, secret, algorithm=hashlib.sha256):
+    """Generate an hexdigest hmac for given data, secret and algorithm."""
+    return hmac.new(secret.encode('utf-8'),
+                    data.encode('utf-8'),
+                    algorithm).hexdigest()
 
 
 def scope_matches(provided, required):

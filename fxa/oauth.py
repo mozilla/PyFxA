@@ -1,22 +1,27 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
+import json
+import time
 
 from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
 from fxa.errors import OutOfProtocolError, ScopeMismatchError
-from fxa._utils import APIClient, scope_matches
+from fxa._utils import APIClient, scope_matches, get_hmac
 
 
 DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com/v1"
 VERSION_SUFFIXES = ("/v1",)
+DEFAULT_CACHE_EXPIRY = 300
+TOKEN_HMAC_SECRET = 'PyFxA Token Cache Hmac Secret'
 
 
 class Client(object):
     """Client for talking to the Firefox Accounts OAuth server"""
 
-    def __init__(self, client_id=None, client_secret=None, server_url=None):
+    def __init__(self, client_id=None, client_secret=None, server_url=None,
+                 cache=True, ttl=DEFAULT_CACHE_EXPIRY):
         self.client_id = client_id
         self.client_secret = client_secret
         if server_url is None:
@@ -28,6 +33,10 @@ class Client(object):
             self.apiclient = APIClient(server_url)
         else:
             self.apiclient = server_url
+
+        self.cache = cache
+        if self.cache is True:
+            self.cache = MemoryCache(ttl)
 
     @property
     def server_url(self):
@@ -124,7 +133,7 @@ class Client(object):
         """Trade an identity assertion for an oauth token.
 
         This method takes an identity assertion for a user and uses it to
-        generate an oauth token.  The client_id must have implicit grant
+        generate an oauth token. The client_id must have implicit grant
         privileges.
 
         :param assertion: an identity assertion for the target user.
@@ -159,21 +168,66 @@ class Client(object):
         :raises fxa.errors.ClientError: if the provided token is invalid.
         :raises fxa.errors.TrustError: if the token scopes do not match.
         """
-        url = '/verify'
-        body = {
-            'token': token
-        }
-        resp = self.apiclient.post(url, body)
+        key = 'fxa.oauth.verify_token:%s:%s' % (
+            get_hmac(token, TOKEN_HMAC_SECRET), scope)
+        if self.cache is not None:
+            resp = self.cache.get(key)
+        else:
+            resp = None
 
-        missing_attrs = ", ".join([k for k in ('user', 'scope', 'client_id')
-                                   if k not in resp])
-        if missing_attrs:
-            error_msg = '{0} missing in OAuth response'.format(missing_attrs)
-            raise OutOfProtocolError(error_msg)
+        if resp is None:
+            url = '/verify'
+            body = {
+                'token': token
+            }
+            resp = self.apiclient.post(url, body)
 
-        if scope is not None:
-            authorized_scope = resp['scope']
-            if not scope_matches(authorized_scope, scope):
-                raise ScopeMismatchError(authorized_scope, scope)
+            missing_attrs = ", ".join([
+                k for k in ('user', 'scope', 'client_id') if k not in resp
+            ])
+            if missing_attrs:
+                error_msg = '{0} missing in OAuth response'.format(
+                    missing_attrs)
+                raise OutOfProtocolError(error_msg)
+
+            if scope is not None:
+                authorized_scope = resp['scope']
+                if not scope_matches(authorized_scope, scope):
+                    raise ScopeMismatchError(authorized_scope, scope)
+
+            if self.cache is not None:
+                self.cache.set(key, json.dumps(resp).encode('utf-8'))
+        else:
+            resp = json.loads(resp.decode('utf-8'))
 
         return resp
+
+
+class MemoryCache(object):
+    """Simple Memory cache."""
+
+    def __init__(self, ttl=DEFAULT_CACHE_EXPIRY):
+        self.ttl = ttl
+        self.cache = {}
+        self.expires_at = {}
+
+    def get(self, key):
+        self._cleanup()
+        value = self.cache.get(key)
+        return value
+
+    def set(self, key, value):
+        self.cache[key] = value
+        self.expires_at[key] = time.time() + self.ttl
+
+    def delete(self, key):
+        if key in self.cache:
+            del self.cache[key]
+
+        if key in self.expires_at:
+            del self.expires_at[key]
+
+    def _cleanup(self):
+        for key, expires_at in list(self.expires_at.items()):
+            if expires_at < time.time():
+                self.delete(key)
