@@ -347,7 +347,7 @@ class TestMemoryCache(unittest.TestCase):
     def setUp(self):
         self.cache = MemoryCache()
 
-    def test_can_get_what_have_been_set(self):
+    def test_can_get_what_has_been_set(self):
         self.cache.set('Foo', 'Bar')
         self.assertEqual(self.cache.get('Foo'), 'Bar')
 

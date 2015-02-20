@@ -8,12 +8,13 @@ from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
 from fxa.errors import OutOfProtocolError, ScopeMismatchError
-from fxa._utils import APIClient, scope_matches
+from fxa._utils import APIClient, scope_matches, get_hmac
 
 
 DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com/v1"
 VERSION_SUFFIXES = ("/v1",)
 DEFAULT_CACHE_EXPIRACY = 300
+TOKEN_HMAC_SECRET = 'PyFxA Token Cache Hmac Secret'
 
 
 class Client(object):
@@ -167,7 +168,8 @@ class Client(object):
         :raises fxa.errors.ClientError: if the provided token is invalid.
         :raises fxa.errors.TrustError: if the token scopes do not match.
         """
-        key = 'fxa.oauth.verify_token:%s:%s' % (token, scope)
+        key = 'fxa.oauth.verify_token:%s:%s' % (
+            get_hmac(token, TOKEN_HMAC_SECRET), scope)
         if self.cache is not None:
             resp = self.cache.get(key)
         else:
