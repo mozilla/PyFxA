@@ -13,7 +13,7 @@ from fxa._utils import APIClient, scope_matches, get_hmac
 
 DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com/v1"
 VERSION_SUFFIXES = ("/v1",)
-DEFAULT_CACHE_EXPIRACY = 300
+DEFAULT_CACHE_EXPIRY = 300
 TOKEN_HMAC_SECRET = 'PyFxA Token Cache Hmac Secret'
 
 
@@ -21,7 +21,7 @@ class Client(object):
     """Client for talking to the Firefox Accounts OAuth server"""
 
     def __init__(self, client_id=None, client_secret=None, server_url=None,
-                 cache=True, ttl=DEFAULT_CACHE_EXPIRACY):
+                 cache=True, ttl=DEFAULT_CACHE_EXPIRY):
         self.client_id = client_id
         self.client_secret = client_secret
         if server_url is None:
@@ -206,7 +206,7 @@ class Client(object):
 class MemoryCache(object):
     """Simple Memory cache."""
 
-    def __init__(self, ttl=DEFAULT_CACHE_EXPIRACY):
+    def __init__(self, ttl=DEFAULT_CACHE_EXPIRY):
         self.ttl = ttl
         self.cache = {}
         self.expires_at = {}
