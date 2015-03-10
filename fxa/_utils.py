@@ -270,7 +270,7 @@ class APIClient(object):
         if 500 <= resp.status_code < 600:
             raise fxa.errors.ServerError(body)
         if resp.status_code < 200 or resp.status_code >= 300:
-            msg = "API responded with unexpected status code: {}"
+            msg = "API responded with unexpected status code: {0}"
             raise fxa.errors.OutOfProtocolError(msg.format(resp.status_code))
 
         # Return the parsed JSON body for successful responses.
@@ -332,3 +332,18 @@ class HawkTokenAuth(requests.auth.AuthBase):
     def unbundle(self, namespace, payload):
         """Unbundle encrypted response data."""
         return fxa.crypto.unbundle(self.bundle_key, namespace, payload)
+
+
+class BearerTokenAuth(requests.auth.AuthBase):
+    """A requests auth hook implementing OAuth bearer-token-based auth.
+
+    This auth hook implements the simple "bearer token" auth scheme.
+    The provided token is passed directly in the Authorization header.
+    """
+
+    def __init__(self, token, apiclient=None):
+        self.token = token
+
+    def __call__(self, req):
+        req.headers["Authorization"] = "Bearer {0}".format(self.token)
+        return req
