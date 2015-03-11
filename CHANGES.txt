@@ -1,5 +1,12 @@
+v0.0.4
+======
+
+ * Add a basic API for retrieving profile information
+   with an OAuth token.
+
+
 v0.0.3
-=======
+======
 
  * Refacotor oauth.Client to take id/secret as constructor args.
  * Add basic caching on oauth token verification.
@@ -11,6 +18,6 @@ v0.0.3
 
 
 v0.0.2
-=======
+======
 
  * Initial release; includes basic auth and oauth functionality.
