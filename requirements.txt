@@ -1,4 +1,4 @@
-requests
+requests>=2.4.2
 responses
 cryptography
 PyBrowserID
