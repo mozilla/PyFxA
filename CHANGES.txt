@@ -1,3 +1,9 @@
+v0.0.5
+======
+
+ * Specify minimum required version of `requests` dependency.
+
+
 v0.0.4
 ======
 
