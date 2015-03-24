@@ -398,7 +398,7 @@ class TestCachedClient(unittest.TestCase):
     def test_client_verify_code_cached_value_is_used(self):
         with mock.patch.object(self.client.cache, 'set') as mocked_set:
             with mock.patch.object(self.client.cache, 'get',
-                                   return_value=self.body.encode('utf-8')):
+                                   return_value=self.body):
                 # Second call
                 verification = self.client.verify_token(token='abc')
                 self.assertFalse(mocked_set.called)
