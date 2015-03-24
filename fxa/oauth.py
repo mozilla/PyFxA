@@ -196,9 +196,9 @@ class Client(object):
                     raise ScopeMismatchError(authorized_scope, scope)
 
             if self.cache is not None:
-                self.cache.set(key, json.dumps(resp).encode('utf-8'))
+                self.cache.set(key, json.dumps(resp))
         else:
-            resp = json.loads(resp.decode('utf-8'))
+            resp = json.loads(resp)
 
         return resp
 
