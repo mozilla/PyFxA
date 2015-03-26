@@ -25,8 +25,13 @@ from six import PY3
 from six.moves.urllib.parse import urlparse, urljoin
 
 try:
-    import gevent  # NoQA
-    import grequests as requests
+    import gevent.socket
+    import socket
+
+    if socket.socket is gevent.socket.socket:
+        import grequests as requests
+    else:
+        import requests
 except ImportError:
     import requests
 import requests.auth
