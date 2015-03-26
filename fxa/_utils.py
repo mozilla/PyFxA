@@ -24,7 +24,11 @@ except ImportError:
 from six import PY3
 from six.moves.urllib.parse import urlparse, urljoin
 
-import requests
+try:
+    import gevent  # NoQA
+    import grequests as requests
+except ImportError:
+    import requests
 import requests.auth
 import hawkauthlib
 
