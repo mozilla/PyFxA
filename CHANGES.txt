@@ -1,3 +1,9 @@
+v0.0.6
+======
+
+ * Expose unicode in oauth cache, not bytestrings.
+
+
 v0.0.5
 ======
 
