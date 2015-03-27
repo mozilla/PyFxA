@@ -1,8 +1,0 @@
-requests>=2.4.2
-responses
-cryptography
-PyBrowserID
-hawkauthlib
-six
-unittest2
-grequests

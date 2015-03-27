@@ -9,10 +9,10 @@ all:	build test
 
 .PHONY: build
 build: $(VENVDIR)/COMPLETE
-$(VENVDIR)/COMPLETE: requirements.txt
+$(VENVDIR)/COMPLETE: dev-requirements.txt
 	virtualenv --no-site-packages --python=`which python` --distribute $(VENVDIR)
 	$(INSTALL) --upgrade Distribute pip
-	$(INSTALL) -r ./requirements.txt
+	$(INSTALL) -r ./dev-requirements.txt
 	$(PYTHON) ./setup.py develop
 	touch $(VENVDIR)/COMPLETE
 
