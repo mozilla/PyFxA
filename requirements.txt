@@ -5,3 +5,4 @@ PyBrowserID
 hawkauthlib
 six
 unittest2
+grequests

@@ -13,3 +13,9 @@ __ver_patch__ = 5
 __ver_sub__ = ""
 __ver_tuple__ = (__ver_major__, __ver_minor__, __ver_patch__, __ver_sub__)
 __version__ = "%d.%d.%d%s" % __ver_tuple__
+
+
+def monkey_patch_for_gevent():
+    import fxa._utils
+    import grequests
+    fxa._utils.requests = grequests
