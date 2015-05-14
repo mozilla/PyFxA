@@ -202,6 +202,18 @@ class Client(object):
 
         return resp
 
+    def destroy_token(self, token):
+        """Destroy an OAuth token
+
+        :param token: the token to destroy.
+        :raises fxa.errors.ClientError: if the provided token is invalid.
+        """
+        url = '/destroy'
+        body = {
+            'token': token
+        }
+        self.apiclient.post(url, body)
+
 
 class MemoryCache(object):
     """Simple Memory cache."""
