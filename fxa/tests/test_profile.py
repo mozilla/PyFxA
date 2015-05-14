@@ -72,10 +72,11 @@ class TestProfileClientOperations(unittest.TestCase):
         })
 
     @responses.activate
-    def test_get_profile_raises_error_on_missing_attributes(self):
+    def test_get_profile_returns_none_for_missing_attributes(self):
         self._mock_response("/profile", uid="ABCDEF")
-        with self.assertRaises(fxa.errors.OutOfProtocolError):
-            self.client.get_profile(self.token)
+        profile = self.client.get_profile(self.token)
+        self.assertEqual(profile["uid"], "ABCDEF")
+        self.assertEqual(profile["email"], None)
 
     @responses.activate
     def test_get_email(self):

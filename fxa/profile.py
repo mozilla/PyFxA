@@ -37,8 +37,7 @@ class Client(object):
 
         for field in ("uid", "email", "avatar"):
             if field not in resp:
-                error_msg = "{0} missing in profile response".format(field)
-                raise OutOfProtocolError(error_msg)
+                resp[field] = None
 
         return resp
 
