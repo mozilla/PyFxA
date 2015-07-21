@@ -1,6 +1,6 @@
 from fxa.requests import FxABrowserIdAuth
 import mock
-import unittest
+from fxa.tests.utils import unittest
 
 
 class Request(object):
@@ -14,7 +14,8 @@ def mocked_client():
     client = mock.MagicMock()
     session = mock.MagicMock()
     session.get_identity_assertion.return_value = 'abcd'
-    session.fetch_keys.return_value = ('keyA', 'keyB')
+    session.fetch_keys.return_value = ('keyA'.encode('utf-8'),
+                                       'keyB'.encode('utf-8'))
     client.login.return_value = session
     return client
 
