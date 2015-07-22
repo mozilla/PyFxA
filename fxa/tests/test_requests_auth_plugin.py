@@ -1,4 +1,4 @@
-from fxa.requests import FxABrowserIdAuth
+from fxa.plugins.requests import FxABrowserIDAuth
 import mock
 from fxa.tests.utils import unittest
 
@@ -20,26 +20,28 @@ def mocked_client():
     return client
 
 
-class TestFxABrowserIdAuth(unittest.TestCase):
+class TestFxABrowserIDAuth(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
-        super(TestFxABrowserIdAuth, self).__init__(*args, **kwargs)
-        self.auth = FxABrowserIdAuth(email="test@restmail.com",
+        super(TestFxABrowserIDAuth, self).__init__(*args, **kwargs)
+        self.auth = FxABrowserIDAuth(email="test@restmail.com",
                                      password="this is not a password",
                                      server_url="http://localhost:5000")
 
-    @mock.patch('fxa.requests.Client', return_value=mocked_client())
+    @mock.patch('fxa.plugins.requests.Client', return_value=mocked_client())
     def test_audience_is_parsed(self, client_patch):
         self.auth(Request())
         self.assertEquals(self.auth.audience, "http://www.example.com/")
 
-    @mock.patch('fxa.requests.Client', return_value=mocked_client())
+    @mock.patch('fxa.plugins.requests.Client', return_value=mocked_client())
     def test_server_url_is_passed_to_client(self, client_patch):
         self.auth(Request())
         client_patch.assert_called_with(server_url="http://localhost:5000")
 
-    @mock.patch('fxa.requests.Client', return_value=mocked_client())
+    @mock.patch('fxa.plugins.requests.Client', return_value=mocked_client())
     def test_header_are_set_to_request(self, client_patch):
         r = self.auth(Request())
         self.assertIn('Authorization', r.headers)
+        self.assertTrue(r.headers['Authorization'].startswith("BrowserID"),
+                        "Authorization headers does not start with BrowserID")
         self.assertIn('X-Client-State', r.headers)

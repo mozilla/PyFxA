@@ -90,19 +90,19 @@ testing with live email addresses.  It works like this:
 Using Firefox Account BrowserID with Requests
 =============================================
 
-You can use the ``FxABrowserIdAuth`` to build the BrowserId assertion:
+You can use the ``FxABrowserIDAuth`` to build the BrowserID assertion:
 
 .. code-block:: python
 
     from fxa.core import Client
-    from fxa.requests import FxABrowserIdAuth
+    from fxa.plugins.requests import FxABrowserIDAuth
     from fxa.tests.utils import TestEmailAccount
 
     email = acct.email
     password = "MySecretPassword"
 
     raw_resp = requests.get('https://token.services.mozilla.com/1.0/sync/1.5',
-                            auth=FxABrowserIdAuth(email, password))
+                            auth=FxABrowserIDAuth(email, password))
 
     raw_resp.raise_for_status()
     resp = raw_resp.json()

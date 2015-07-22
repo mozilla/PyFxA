@@ -13,7 +13,7 @@ from six.moves.urllib.parse import urlparse
 from fxa.core import DEFAULT_SERVER_URL, Client
 
 
-class FxABrowserIdAuth(AuthBase):
+class FxABrowserIDAuth(AuthBase):
     """Handles authentication using FxA BrowserID.
 
     :param email:
@@ -53,10 +53,11 @@ class FxABrowserIdAuth(AuthBase):
 
 # If httpie is installed, register the Firefox Account BrowserID plugin.
 try:
-
     from httpie.plugins import AuthPlugin
-
-    class FxABrowserIdPlugin(AuthPlugin):
+except ImportError:
+    pass
+else:
+    class FxABrowserIDPlugin(AuthPlugin):
 
         name = 'Firefox Account BrowserID Auth'
         auth_type = 'fxa-browserid'
@@ -65,7 +66,4 @@ try:
 
         def get_auth(self, fxa_id, fxa_password):
             bid_audience = os.getenv('BID_AUDIENCE')
-            return FxABrowserIdAuth(fxa_id, fxa_password, bid_audience)
-
-except ImportError:
-    pass
+            return FxABrowserIDAuth(fxa_id, fxa_password, bid_audience)
