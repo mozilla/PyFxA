@@ -13,7 +13,7 @@ $(VENVDIR)/COMPLETE: dev-requirements.txt
 	virtualenv --no-site-packages --python=`which python` --distribute $(VENVDIR)
 	$(INSTALL) --upgrade Distribute pip
 	$(INSTALL) -r ./dev-requirements.txt
-	$(PYTHON) ./setup.py develop
+	$(INSTALL) -e .[openssl]
 	touch $(VENVDIR)/COMPLETE
 
 .PHONY: test
