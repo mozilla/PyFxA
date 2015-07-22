@@ -6,6 +6,7 @@ import json
 import mock
 import responses
 import time
+import six
 
 import fxa.errors
 from fxa.oauth import Client, scope_matches, MemoryCache
@@ -414,3 +415,19 @@ class TestCachedClient(unittest.TestCase):
         # Second call
         verification = self.client.verify_token(token='abc')
         self.assertDictEqual(verification, json.loads(self.body))
+
+
+class TestGeventPatch(unittest.TestCase):
+
+    @unittest.skipUnless(six.PY2, "gevent works only with Python 2")
+    def test_monkey_patch_for_gevent(self):
+        import fxa
+        import fxa._utils
+        import grequests
+        old_requests = fxa._utils.requests
+
+        fxa.monkey_patch_for_gevent()
+        self.assertNotEqual(fxa._utils.requests, old_requests)
+        self.assertEqual(fxa._utils.requests, grequests)
+
+        fxa._utils.requests = old_requests

@@ -13,12 +13,12 @@ with open(os.path.join(here, "README.rst")) as f:
 with open(os.path.join(here, "CHANGES.txt")) as f:
     CHANGES = f.read()
 
-with open(os.path.join(here, "requirements.txt")) as f:
+with open(os.path.join(here, "dev-requirements.txt")) as f:
     requires = (ln.strip() for ln in f)
-    requires = [ln for ln in requires if ln and not ln.startswith("#")]
+    test_requires = [ln for ln in requires if ln and not ln.startswith("#")]
 
 if sys.version_info < (2, 7):
-    requires.append("unittest2")
+    test_requires.append("unittest2")
 
 # Read the version number from the module source code.
 # To do so, we parse out all lines up to the ones defining __version__ and
@@ -41,15 +41,22 @@ except Exception:
     pass
 VERSION = info.get("__version__", "0.0.0dev")
 
+REQUIREMENTS = [
+    "requests>=2.4.2",
+    "cryptography",
+    "PyBrowserID",
+    "hawkauthlib",
+    "six"
+]
 
 setup(name="PyFxA",
       version=VERSION,
       description="Firefox Accounts client library for Python",
       long_description=README + "\n\n" + CHANGES,
       classifiers=[
-        "Intended Audience :: Developers",
-        "Programming Language :: Python",
-        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+          "Intended Audience :: Developers",
+          "Programming Language :: Python",
+          "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
       ],
       license="MPLv2.0",
       author="Mozilla Services",
@@ -59,6 +66,6 @@ setup(name="PyFxA",
       packages=find_packages(),
       include_package_data=True,
       zip_safe=False,
-      install_requires=requires,
-      tests_require=requires,
+      install_requires=REQUIREMENTS,
+      tests_require=test_requires,
       test_suite="fxa")
