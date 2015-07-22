@@ -49,6 +49,12 @@ REQUIREMENTS = [
     "six"
 ]
 
+OPENSSL_REQUIREMENTS = [
+    "pyopenssl",
+    "ndg-httpsclient",
+    "pyasn1"
+]
+
 setup(name="PyFxA",
       version=VERSION,
       description="Firefox Accounts client library for Python",
@@ -67,5 +73,8 @@ setup(name="PyFxA",
       include_package_data=True,
       zip_safe=False,
       install_requires=REQUIREMENTS,
+      extras_require={
+          'openssl': OPENSSL_REQUIREMENTS
+      },
       tests_require=test_requires,
       test_suite="fxa")

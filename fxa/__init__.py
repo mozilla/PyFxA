@@ -19,3 +19,11 @@ def monkey_patch_for_gevent():
     import fxa._utils
     import grequests
     fxa._utils.requests = grequests
+
+try:
+    import OpenSSL  # NoQA
+except ImportError:
+    pass
+else:
+    from requests.packages import urllib3
+    urllib3.contrib.pyopenssl.inject_into_urllib3()
