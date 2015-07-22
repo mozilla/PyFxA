@@ -29,11 +29,12 @@ class FxABrowserIDAuth(AuthBase):
       The url of the Firefox Account server.
 
     """
-    def __init__(self, email, password, audience=None,
+    def __init__(self, email, password, audience=None, with_client_state=False,
                  server_url=DEFAULT_SERVER_URL):
         self.email = email
         self.password = password
         self.audience = audience
+        self.with_client_state = with_client_state
         self.server_url = server_url
 
     def __call__(self, request):
@@ -48,8 +49,11 @@ class FxABrowserIDAuth(AuthBase):
         _, keyB = session.fetch_keys()
         client_state = hexlify(sha256(keyB).digest()[0:16])
         request.headers['Authorization'] = "BrowserID %s" % bid_assertion
-        request.headers['X-Client-State'] = client_state
+
+        if self.with_client_state:
+            request.headers['X-Client-State'] = client_state
         return request
+
 
 # If httpie is installed, register the Firefox Account BrowserID plugin.
 try:
@@ -66,4 +70,6 @@ else:
 
         def get_auth(self, fxa_id, fxa_password):
             bid_audience = os.getenv('BID_AUDIENCE')
-            return FxABrowserIDAuth(fxa_id, fxa_password, bid_audience)
+            with_client_state = os.getenv('BID_WITH_CLIENT_STATE', False)
+            return FxABrowserIDAuth(fxa_id, fxa_password, bid_audience,
+                                    with_client_state)

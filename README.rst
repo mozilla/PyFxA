@@ -96,13 +96,13 @@ You can use the ``FxABrowserIDAuth`` to build the BrowserID assertion:
 
     from fxa.core import Client
     from fxa.plugins.requests import FxABrowserIDAuth
-    from fxa.tests.utils import TestEmailAccount
 
     email = acct.email
     password = "MySecretPassword"
 
     raw_resp = requests.get('https://token.services.mozilla.com/1.0/sync/1.5',
-                            auth=FxABrowserIDAuth(email, password))
+                            auth=FxABrowserIDAuth(email, password,
+                                                  with_client_state=True))
 
     raw_resp.raise_for_status()
     resp = raw_resp.json()
@@ -116,7 +116,8 @@ You can use the httpie plugin provided with PyFxA to build the BrowserID request
 
 .. code-block:: http
 
-    http GET -v https://token.services.mozilla.com/1.0/sync/1.5 \
+    BID_WITH_CLIENT_STATE=True \
+        http GET https://token.services.mozilla.com/1.0/sync/1.5 \
         --auth-type=fxa-browserid --auth "email:password" -v
 
     GET /1.0/sync/1.5 HTTP/1.1
@@ -150,4 +151,8 @@ You can use the httpie plugin provided with PyFxA to build the BrowserID request
 
 .. note::
 
-    You can configure the audience by settings the BID_AUDIENCE environment variable.
+    You can configure the audience by settings the ``BID_AUDIENCE``
+    environment variable.
+
+	You can also compute the Token Server client state using the
+	``BID_WITH_CLIENT_STATE`` environment variable.

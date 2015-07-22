@@ -4,10 +4,11 @@ from fxa.tests.utils import unittest
 
 
 class Request(object):
-    method = 'GET'
-    body = ''
-    url = 'http://www.example.com'
-    headers = {'Content-Type': 'application/json'}
+    def __init__(self):
+        self.method = 'GET'
+        self.body = ''
+        self.url = 'http://www.example.com'
+        self.headers = {'Content-Type': 'application/json'}
 
 
 def mocked_client():
@@ -26,6 +27,7 @@ class TestFxABrowserIDAuth(unittest.TestCase):
         super(TestFxABrowserIDAuth, self).__init__(*args, **kwargs)
         self.auth = FxABrowserIDAuth(email="test@restmail.com",
                                      password="this is not a password",
+                                     with_client_state=True,
                                      server_url="http://localhost:5000")
 
     @mock.patch('fxa.plugins.requests.Client', return_value=mocked_client())
@@ -45,3 +47,11 @@ class TestFxABrowserIDAuth(unittest.TestCase):
         self.assertTrue(r.headers['Authorization'].startswith("BrowserID"),
                         "Authorization headers does not start with BrowserID")
         self.assertIn('X-Client-State', r.headers)
+
+    @mock.patch('fxa.plugins.requests.Client', return_value=mocked_client())
+    def test_client_state_not_set_by_default(self, client_patch):
+        auth = FxABrowserIDAuth(email="test@restmail.com",
+                                password="this is not a password",
+                                server_url="http://localhost:5000")
+        r = auth(Request())
+        self.assertNotIn('X-Client-State', r.headers)
