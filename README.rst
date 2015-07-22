@@ -12,6 +12,18 @@ to provide easy support for the following features:
 
 But none of that is ready yet; caveat emptor.
 
+
+Installing PyFxA with OpenSSL support
+=====================================
+
+In case your Python version raises ``InsecurePlatformWarning`` you can
+install PyFxA with OpenSSL support:
+
+.. code-block::
+
+    pip install PyFxA[openssl]
+
+
 Firefox Accounts
 ================
 
@@ -27,6 +39,7 @@ Currently, basic auth-server operations should work like so:
     session = client.login("test@example.com", "MySecretPassword")
     cert = session.sign_certificate(myPublicKey)
     session.change_password("MySecretPassword", "ThisIsEvenMoreSecret")
+
 
 FxA OAuth Relier
 ================
