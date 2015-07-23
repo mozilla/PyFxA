@@ -12,6 +12,18 @@ to provide easy support for the following features:
 
 But none of that is ready yet; caveat emptor.
 
+
+Installing PyFxA with OpenSSL support
+=====================================
+
+In case your Python version raises ``InsecurePlatformWarning`` you can
+install PyFxA with OpenSSL support:
+
+.. code-block::
+
+    pip install PyFxA[openssl]
+
+
 Firefox Accounts
 ================
 
@@ -27,6 +39,7 @@ Currently, basic auth-server operations should work like so:
     session = client.login("test@example.com", "MySecretPassword")
     cert = session.sign_certificate(myPublicKey)
     session.change_password("MySecretPassword", "ThisIsEvenMoreSecret")
+
 
 FxA OAuth Relier
 ================
@@ -141,11 +154,11 @@ You can use the httpie plugin provided with PyFxA to build the BrowserID request
     X-Timestamp: 1437475722
 
     {
-        "api_endpoint": "https://sync-230-us-west-2.sync.services.mozilla.com/1.5/99283757", 
-        "duration": 3600, 
-        "hashalg": "sha256", 
-        "id": "eyJub2RlI....FlYzdiMCIsICJ1aWQiOiAyMDIzODc3NX2Bvj5zv..7S2jRaw__-....eh3hiSVWA==", 
-        "key": "lSw-MvgK....ebu9JsX-yXS70NkiXu....6wWgVzU0Q=", 
+        "api_endpoint": "https://sync-230-us-west-2.sync.services.mozilla.com/1.5/99283757",
+        "duration": 3600,
+        "hashalg": "sha256",
+        "id": "eyJub2RlI....FlYzdiMCIsICJ1aWQiOiAyMDIzODc3NX2Bvj5zv..7S2jRaw__-....eh3hiSVWA==",
+        "key": "lSw-MvgK....ebu9JsX-yXS70NkiXu....6wWgVzU0Q=",
         "uid": 99283757
     }
 
@@ -156,3 +169,56 @@ You can use the httpie plugin provided with PyFxA to build the BrowserID request
 
 	You can also compute the Token Server client state using the
 	``BID_WITH_CLIENT_STATE`` environment variable.
+
+
+Using Firefox Account Bearer Tokens with HTTPie
+===============================================
+
+You can use the httpie plugin provided with PyFxA to build the Bearer
+token request:
+
+.. code-block:: http
+
+    $ http GET https://profile.accounts.firefox.com/v1/profile \
+        --auth-type fxa-bearer --auth "email:password" -v
+
+    GET /v1/profile HTTP/1.1
+    Accept: */*
+    Accept-Encoding: gzip, deflate
+    Authorization: Bearer 98e05e12ba...0d61231e88daf91
+    Connection: keep-alive
+    Host: profile.accounts.firefox.com
+    User-Agent: HTTPie/0.9.2
+
+    HTTP/1.1 200 OK
+    Connection: keep-alive
+    Content-Length: 92
+    Content-Type: application/json; charset=utf-8
+    Date: Tue, 21 Jul 2015 14:47:32 GMT
+    Server: nginx
+    access-control-allow-headers: Authorization, Content-Type, If-None-Match
+    access-control-allow-methods: GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS
+    access-control-allow-origin: *
+    access-control-expose-headers: WWW-Authenticate, Server-Authorization
+    access-control-max-age: 86400
+    cache-control: no-cache
+    content-encoding: gzip
+    etag: "d1cf22901b3e3be527c06e27689be705bb22a172"
+    strict-transport-security: max-age=15552000; includeSubdomains
+    vary: accept-encoding
+
+    {
+        "email": "email@address.com",
+        "uid": "63b91ca4ec19ad79f320eaf5815d75e9"
+    }
+
+.. note::
+
+    You can configure the following:
+
+      - FXA_CLIENT_ID: To choose the CLIENT_ID (default to Firefox Dev id)
+      - FXA_SCOPES: To choose the list of scopes
+      - FXA_ACCOUNT_SERVER_URL: To select the account server url
+        (default to: https://api.accounts.firefox.com/v1)
+      - FXA_OAUTH_SERVER_URL: To select the oauth server url
+        (default to: https://oauth.accounts.firefox.com/v1)

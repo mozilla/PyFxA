@@ -9,11 +9,11 @@ all:	build test
 
 .PHONY: build
 build: $(VENVDIR)/COMPLETE
-$(VENVDIR)/COMPLETE: requirements.txt
+$(VENVDIR)/COMPLETE: dev-requirements.txt
 	virtualenv --no-site-packages --python=`which python` --distribute $(VENVDIR)
 	$(INSTALL) --upgrade Distribute pip
-	$(INSTALL) -r ./requirements.txt
-	$(PYTHON) ./setup.py develop
+	$(INSTALL) -r ./dev-requirements.txt
+	$(INSTALL) -e .[openssl]
 	touch $(VENVDIR)/COMPLETE
 
 .PHONY: test
