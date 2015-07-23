@@ -10,7 +10,10 @@ import os
 from requests.auth import AuthBase
 from six.moves.urllib.parse import urlparse
 
-from fxa.core import DEFAULT_SERVER_URL, Client
+from fxa import core
+from fxa import oauth
+
+DEFAULT_CLIENT_ID = "5882386c6d801776"  # Firefox dev Client ID
 
 
 class FxABrowserIDAuth(AuthBase):
@@ -30,7 +33,7 @@ class FxABrowserIDAuth(AuthBase):
 
     """
     def __init__(self, email, password, audience=None, with_client_state=False,
-                 server_url=DEFAULT_SERVER_URL):
+                 server_url=core.DEFAULT_SERVER_URL):
         self.email = email
         self.password = password
         self.audience = audience
@@ -38,7 +41,7 @@ class FxABrowserIDAuth(AuthBase):
         self.server_url = server_url
 
     def __call__(self, request):
-        client = Client(server_url=self.server_url)
+        client = core.Client(server_url=self.server_url)
         session = client.login(self.email, self.password, keys=True)
 
         if self.audience is None:
@@ -62,7 +65,6 @@ except ImportError:
     pass
 else:
     class FxABrowserIDPlugin(AuthPlugin):
-
         name = 'Firefox Account BrowserID Auth'
         auth_type = 'fxa-browserid'
         description = ('Generate a BrowserID assertion from '
@@ -73,3 +75,60 @@ else:
             with_client_state = os.getenv('BID_WITH_CLIENT_STATE', False)
             return FxABrowserIDAuth(fxa_id, fxa_password, bid_audience,
                                     with_client_state)
+
+
+class FxABearerTokenAuth(AuthBase):
+    def __init__(self, email, password, scopes=None, client_id=None,
+                 account_server_url=core.DEFAULT_SERVER_URL,
+                 oauth_server_url=oauth.DEFAULT_SERVER_URL):
+        self.email = email
+        self.password = password
+
+        if scopes is None:
+            scopes = ['profile']
+
+        self.scopes = scopes
+        self.client_id = client_id
+        self.account_server_url = account_server_url
+        self.oauth_server_url = oauth_server_url
+
+    def __call__(self, request):
+        client = core.Client(server_url=self.account_server_url)
+        session = client.login(self.email, self.password, keys=True)
+
+        url = urlparse(self.oauth_server_url)
+        audience = "%s://%s/" % (url.scheme, url.netloc)
+
+        bid_assertion = session.get_identity_assertion(audience)
+        oauth_client = oauth.Client(server_url=self.oauth_server_url)
+        token = oauth_client.authorize_token(bid_assertion,
+                                             ' '.join(self.scopes),
+                                             self.client_id)
+        request.headers["Authorization"] = "Bearer %s" % token
+        return request
+
+
+# If httpie is installed, register the Firefox Account BrowserID plugin.
+try:
+    from httpie.plugins import AuthPlugin
+except ImportError:
+    pass
+else:
+    class FxABearerTokenPlugin(AuthPlugin):
+
+        name = 'Firefox Account Bearer Token Auth'
+        auth_type = 'fxa-bearer'
+        description = ('Generate a Bearer Token from '
+                       'a Firefox Account login/password')
+
+        def get_auth(self, fxa_id, fxa_password):
+            client_id = os.getenv("FXA_CLIENT_ID", DEFAULT_CLIENT_ID)
+            scopes = os.getenv("FXA_SCOPES")
+            account_server_url = os.getenv("FXA_ACCOUNT_SERVER_URL",
+                                           core.DEFAULT_SERVER_URL)
+            oauth_server_url = os.getenv("FXA_OAUTH_SERVER_URL",
+                                         oauth.DEFAULT_SERVER_URL)
+            if scopes:
+                scopes = scopes.split()
+            return FxABearerTokenAuth(fxa_id, fxa_password, scopes, client_id,
+                                      account_server_url, oauth_server_url)

@@ -70,7 +70,8 @@ setup(name="PyFxA",
       ],
       entry_points={
           'httpie.plugins.auth.v1': [
-              'httpie_fxa-browserid = fxa.plugins.requests:FxABrowserIDPlugin'
+              'httpie_fxa-browserid = fxa.plugins.requests:FxABrowserIDPlugin',
+              'httpie_fxa-bearer = fxa.plugins.requests:FxABearerTokenPlugin'
           ]
       },
       license="MPLv2.0",
