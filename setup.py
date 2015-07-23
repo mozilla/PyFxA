@@ -25,8 +25,6 @@ if sys.version_info < (2, 7):
 # To do so, we parse out all lines up to the ones defining __version__ and
 # execute them, then grab the resulting value of the __version__ variable.
 
-VERSION = "0.0.7"
-
 REQUIREMENTS = [
     "requests>=2.4.2",
     "cryptography",
@@ -45,7 +43,7 @@ else:
     OPENSSL_REQUIREMENTS = []
 
 setup(name="PyFxA",
-      version=VERSION,
+      version='0.0.8.dev0',
       description="Firefox Accounts client library for Python",
       long_description=README + "\n\n" + CHANGES,
       classifiers=[
