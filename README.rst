@@ -98,3 +98,74 @@ testing with live email addresses.  It works like this:
     # Destroy the account once you're done with it.
     acct.clear()
     client.destroy_account(acct.email, "MySecretPassword")
+
+
+Using Firefox Account BrowserID with Requests
+=============================================
+
+You can use the ``FxABrowserIDAuth`` to build the BrowserID assertion:
+
+.. code-block:: python
+
+    from fxa.core import Client
+    from fxa.plugins.requests import FxABrowserIDAuth
+
+    email = acct.email
+    password = "MySecretPassword"
+
+    raw_resp = requests.get('https://token.services.mozilla.com/1.0/sync/1.5',
+                            auth=FxABrowserIDAuth(email, password,
+                                                  with_client_state=True))
+
+    raw_resp.raise_for_status()
+    resp = raw_resp.json()
+    user_id = resp['uid']
+
+
+Using Firefox Account BrowserID with HTTPie
+===========================================
+
+You can use the httpie plugin provided with PyFxA to build the BrowserID request:
+
+.. code-block:: http
+
+    BID_WITH_CLIENT_STATE=True \
+        http GET https://token.services.mozilla.com/1.0/sync/1.5 \
+        --auth-type=fxa-browserid --auth "email:password" -v
+
+    GET /1.0/sync/1.5 HTTP/1.1
+    Accept: */*
+    Accept-Encoding: gzip, deflate
+    Authorization: BrowserID eyJhbG..._EqaQ
+    Connection: keep-alive
+    Host: token.services.mozilla.com
+    User-Agent: HTTPie/0.9.2
+    X-Client-State: 97b945...920fac4d4d5f0dc6...2992
+
+    HTTP/1.1 200 OK
+    Access-Control-Allow-Credentials: true
+    Access-Control-Allow-Headers: DNT,X-Mx-ReqToken,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization,X-Conditions-Accepted
+    Access-Control-Allow-Methods: GET, POST, OPTIONS
+    Access-Control-Max-Age: 1728000
+    Connection: keep-alive
+    Content-Length: 414
+    Content-Type: application/json; charset=UTF-8
+    Date: Tue, 21 Jul 2015 10:48:42 GMT
+    X-Timestamp: 1437475722
+
+    {
+        "api_endpoint": "https://sync-230-us-west-2.sync.services.mozilla.com/1.5/99283757", 
+        "duration": 3600, 
+        "hashalg": "sha256", 
+        "id": "eyJub2RlI....FlYzdiMCIsICJ1aWQiOiAyMDIzODc3NX2Bvj5zv..7S2jRaw__-....eh3hiSVWA==", 
+        "key": "lSw-MvgK....ebu9JsX-yXS70NkiXu....6wWgVzU0Q=", 
+        "uid": 99283757
+    }
+
+.. note::
+
+    You can configure the audience by settings the ``BID_AUDIENCE``
+    environment variable.
+
+	You can also compute the Token Server client state using the
+	``BID_WITH_CLIENT_STATE`` environment variable.

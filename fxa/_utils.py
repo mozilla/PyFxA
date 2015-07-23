@@ -9,7 +9,7 @@ This private-api stuff that will most likely change, move, refactor
 etc as we go.  So don't import any of it outside of this package.
 
 """
-
+from __future__ import absolute_import
 import os
 import time
 import hashlib

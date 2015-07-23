@@ -68,6 +68,11 @@ setup(name="PyFxA",
           "Programming Language :: Python",
           "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
       ],
+      entry_points={
+          'httpie.plugins.auth.v1': [
+              'httpie_fxa-browserid = fxa.plugins.requests:FxABrowserIDPlugin'
+          ]
+      },
       license="MPLv2.0",
       author="Mozilla Services",
       author_email="services-dev@mozilla.org",
