@@ -1,7 +1,8 @@
-
 import os
 import sys
 from setuptools import setup, find_packages
+
+PY2 = sys.version_info[0] == 2
 
 # Read package meta-data from the containing directory.
 
@@ -49,6 +50,15 @@ REQUIREMENTS = [
     "six"
 ]
 
+if PY2:
+    OPENSSL_REQUIREMENTS = [
+        "pyopenssl",
+        "ndg-httpsclient",
+        "pyasn1"
+    ]
+else:
+    OPENSSL_REQUIREMENTS = []
+
 setup(name="PyFxA",
       version=VERSION,
       description="Firefox Accounts client library for Python",
@@ -67,5 +77,8 @@ setup(name="PyFxA",
       include_package_data=True,
       zip_safe=False,
       install_requires=REQUIREMENTS,
+      extras_require={
+          'openssl': OPENSSL_REQUIREMENTS
+      },
       tests_require=test_requires,
       test_suite="fxa")
