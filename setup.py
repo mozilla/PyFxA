@@ -25,22 +25,7 @@ if sys.version_info < (2, 7):
 # To do so, we parse out all lines up to the ones defining __version__ and
 # execute them, then grab the resulting value of the __version__ variable.
 
-info = {}
-try:
-    lines = []
-    with open("fxa/__init__.py") as f:
-        for ln in f:
-            lines.append(ln)
-            if "__version__" in ln:
-                break
-        for ln in f:
-            lines.append(ln)
-            if "__version__" not in ln:
-                break
-    exec("".join(lines), info)
-except Exception:
-    pass
-VERSION = info.get("__version__", "0.0.0dev")
+VERSION = "0.0.7"
 
 REQUIREMENTS = [
     "requests>=2.4.2",

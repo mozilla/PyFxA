@@ -1,24 +1,41 @@
-v0.0.6
-======
+Changelog
+#########
+
+This document describes changes between each past release.
+
+
+0.0.7 (2015-07-23)
+==================
+
+ * Use grequests if available to use PyFxA with the gevent ecosystem.
+ * Add the oauth /destroy operation.
+ * Profile fetch skips fields you don't have permission to read.
+ * Add the BrowserID requests Auth module and related HTTPie plugin.
+ * Add the BearerToken requests Auth module and related HTTPie plugin.
+ * Add PyOpenSSL support for secure SSL requests handling with Python 2.
+
+
+0.0.6 (2015-03-20)
+==================
 
  * Expose unicode in oauth cache, not bytestrings.
 
 
-v0.0.5
-======
+0.0.5 (2015-03-19)
+==================
 
  * Specify minimum required version of `requests` dependency.
 
 
-v0.0.4
-======
+0.0.4 (2015-03-11)
+==================
 
  * Add a basic API for retrieving profile information
    with an OAuth token.
 
 
-v0.0.3
-======
+0.0.3 (2015-02-20)
+==================
 
  * Refacotor oauth.Client to take id/secret as constructor args.
  * Add basic caching on oauth token verification.
@@ -29,7 +46,7 @@ v0.0.3
  * Additional sanity-checking in oauth scope checks.
 
 
-v0.0.2
-======
+0.0.2 (2015-01-05)
+==================
 
  * Initial release; includes basic auth and oauth functionality.
