@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+import codecs
 import os
 import sys
 from setuptools import setup, find_packages
@@ -8,13 +10,18 @@ PY2 = sys.version_info[0] == 2
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-with open(os.path.join(here, "README.rst")) as f:
-    README = f.read()
 
-with open(os.path.join(here, "CHANGES.txt")) as f:
-    CHANGES = f.read()
+def read_file(filename):
+    """Open a related file and return its content."""
+    with codecs.open(os.path.join(here, filename), encoding='utf-8') as f:
+        content = f.read()
+    return content
 
-with open(os.path.join(here, "dev-requirements.txt")) as f:
+README = read_file(os.path.join(here, "README.rst"))
+CHANGES = read_file(os.path.join(here, "CHANGES.txt"))
+
+with codecs.open(os.path.join(here, "dev-requirements.txt"),
+                 encoding='utf-8') as f:
     requires = (ln.strip() for ln in f)
     test_requires = [ln for ln in requires if ln and not ln.startswith("#")]
 
