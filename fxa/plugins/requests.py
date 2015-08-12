@@ -57,7 +57,7 @@ class FxABrowserIDAuth(AuthBase):
 
         cache_key = sha256(''.join((
             self.server_url, self.email,
-            self.password, self.audience))).hexdigest()
+            self.password, self.audience)).encode('utf-8')).hexdigest()
 
         data = self.cache.get(cache_key)
 
@@ -69,7 +69,7 @@ class FxABrowserIDAuth(AuthBase):
                 audience=self.audience,
                 duration=DEFAULT_CACHE_EXPIRY)
             _, keyB = session.fetch_keys()
-            client_state = hexlify(sha256(keyB).digest()[0:16])
+            client_state = hexlify(sha256(keyB).digest()[0:16]).decode('utf-8')
             self.cache.set(cache_key,
                            json.dumps([bid_assertion, client_state]))
         else:
@@ -125,7 +125,7 @@ class FxABearerTokenAuth(AuthBase):
         for key in (self.account_server_url, self.oauth_server_url,
                     self.email, self.password, self.scopes, self.client_id):
             if key:
-                cache_key.update(text_type(key))
+                cache_key.update(text_type(key).encode('utf-8'))
         cache_key = cache_key.hexdigest()
         token = self.cache.get(cache_key)
 
