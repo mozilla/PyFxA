@@ -12,11 +12,21 @@ from requests.auth import AuthBase
 from six import text_type
 from six.moves.urllib.parse import urlparse
 
+from fxa.cache import MemoryCache
 from fxa import core
 from fxa import oauth
 
 DEFAULT_CLIENT_ID = "5882386c6d801776"  # Firefox dev Client ID
 DEFAULT_CACHE_EXPIRY = 3600
+
+
+def get_cache_key(*args):
+    cache_key = sha256()
+    for key in args:
+        if key:
+            cache_key.update(text_type(key).encode('utf-8'))
+        cache_key.update(b'\n')
+    return cache_key.hexdigest()
 
 
 class FxABrowserIDAuth(AuthBase):
@@ -48,16 +58,15 @@ class FxABrowserIDAuth(AuthBase):
         if self.cache is True:
             if ttl is None:
                 ttl = DEFAULT_CACHE_EXPIRY - 1
-            self.cache = oauth.MemoryCache(ttl)
+            self.cache = MemoryCache(ttl)
 
     def __call__(self, request):
         if self.audience is None:
             url = urlparse(request.url)
             self.audience = "%s://%s/" % (url.scheme, url.netloc)
 
-        cache_key = sha256(''.join((
-            self.server_url, self.email,
-            self.password, self.audience)).encode('utf-8')).hexdigest()
+        cache_key = get_cache_key(self.server_url, self.email,
+                                  self.password, self.audience)
 
         data = self.cache.get(cache_key)
 
@@ -118,15 +127,12 @@ class FxABearerTokenAuth(AuthBase):
 
         self.cache = cache
         if self.cache is True:
-            self.cache = oauth.MemoryCache(ttl)
+            self.cache = MemoryCache(ttl)
 
     def __call__(self, request):
-        cache_key = sha256()
-        for key in (self.account_server_url, self.oauth_server_url,
-                    self.email, self.password, self.scopes, self.client_id):
-            if key:
-                cache_key.update(text_type(key).encode('utf-8'))
-        cache_key = cache_key.hexdigest()
+        cache_key = get_cache_key(
+            self.account_server_url, self.oauth_server_url,
+            self.email, self.password, self.scopes, self.client_id)
         token = self.cache.get(cache_key)
 
         if not token:
