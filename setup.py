@@ -11,17 +11,17 @@ PY2 = sys.version_info[0] == 2
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-def read_file(filename):
-    """Open a related file and return its content."""
-    with codecs.open(os.path.join(here, filename), encoding='utf-8') as f:
-        content = f.read()
-    return content
+def open_file(filename):
+    """Open a related file with utf-8 encoding."""
+    return codecs.open(os.path.join(here, filename), encoding='utf-8')
 
-README = read_file(os.path.join(here, "README.rst"))
-CHANGES = read_file(os.path.join(here, "CHANGES.txt"))
+with open_file("README.rst") as f:
+    README = f.read()
 
-with codecs.open(os.path.join(here, "dev-requirements.txt"),
-                 encoding='utf-8') as f:
+with open_file("CHANGES.txt") as f:
+    CHANGES = f.read()
+
+with open_file("dev-requirements.txt") as f:
     requires = (ln.strip() for ln in f)
     test_requires = [ln for ln in requires if ln and not ln.startswith("#")]
 
