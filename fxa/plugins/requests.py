@@ -68,7 +68,9 @@ class FxABrowserIDAuth(AuthBase):
         cache_key = get_cache_key(self.server_url, self.email,
                                   self.password, self.audience)
 
-        data = self.cache.get(cache_key)
+        data = None
+        if self.cache:
+            data = self.cache.get(cache_key)
 
         if not data:
             client = core.Client(server_url=self.server_url)
@@ -79,8 +81,9 @@ class FxABrowserIDAuth(AuthBase):
                 duration=DEFAULT_CACHE_EXPIRY)
             _, keyB = session.fetch_keys()
             client_state = hexlify(sha256(keyB).digest()[0:16]).decode('utf-8')
-            self.cache.set(cache_key,
-                           json.dumps([bid_assertion, client_state]))
+            if self.cache:
+                self.cache.set(cache_key,
+                               json.dumps([bid_assertion, client_state]))
         else:
             bid_assertion, client_state = json.loads(data)
         request.headers['Authorization'] = "BrowserID %s" % bid_assertion
@@ -133,7 +136,9 @@ class FxABearerTokenAuth(AuthBase):
         cache_key = get_cache_key(
             self.account_server_url, self.oauth_server_url,
             self.email, self.password, self.scopes, self.client_id)
-        token = self.cache.get(cache_key)
+        token = None
+        if self.cache:
+            token = self.cache.get(cache_key)
 
         if not token:
             client = core.Client(server_url=self.account_server_url)
@@ -147,7 +152,8 @@ class FxABearerTokenAuth(AuthBase):
             token = oauth_client.authorize_token(bid_assertion,
                                                  ' '.join(self.scopes),
                                                  self.client_id)
-            self.cache.set(cache_key, token)
+            if self.cache:
+                self.cache.set(cache_key, token)
         request.headers["Authorization"] = "Bearer %s" % token
         return request
 
