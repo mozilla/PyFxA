@@ -4,7 +4,7 @@ from os import urandom
 
 from fxa.cache import MemoryCache
 from fxa.plugins.requests import (
-    FxABrowserIDAuth, FxABearerTokenAuth, get_cache_key)
+    FxABrowserIDAuth, FxABearerTokenAuth, get_cache_key, DEFAULT_CACHE_EXPIRY)
 from fxa.tests.utils import unittest
 
 
@@ -90,6 +90,25 @@ class TestFxABrowserIDAuth(unittest.TestCase):
                                 password="this is not a password",
                                 server_url="http://localhost:5000")
         assert type(auth.cache) is MemoryCache
+        self.assertEqual(auth.cache.ttl, DEFAULT_CACHE_EXPIRY - 1)
+
+    @mock.patch('fxa.plugins.requests.core.Client',
+                return_value=mocked_core_client())
+    def test_memory_cache_is_used(self, client_patch):
+        auth = FxABrowserIDAuth(email="test@restmail.com",
+                                password="this is not a password",
+                                server_url="http://localhost:5000")
+        assert type(auth.cache) is MemoryCache
+        self.assertEqual(auth.cache.ttl, DEFAULT_CACHE_EXPIRY - 1)
+
+        # First call should set the cache value
+        auth(Request())
+        self.assertEquals(client_patch.return_value.login.return_value.
+                          get_identity_assertion.call_count, 1)
+        # Second call should use the cache value
+        auth(Request())
+        self.assertEquals(client_patch.return_value.login.return_value.
+                          get_identity_assertion.call_count, 1)
 
     @mock.patch('fxa.plugins.requests.core.Client',
                 return_value=mocked_core_client())
@@ -139,6 +158,23 @@ class TestFxABearerTokenAuth(unittest.TestCase):
     def test_memory_cache_is_set_by_default(self, oauth_client_patch,
                                             core_client_patch):
         assert type(self.auth.cache) is MemoryCache
+        self.assertEqual(self.auth.cache.ttl, DEFAULT_CACHE_EXPIRY)
+
+    @mock.patch('fxa.plugins.requests.core.Client',
+                return_value=mocked_core_client())
+    @mock.patch('fxa.plugins.requests.oauth.Client',
+                return_value=mocked_oauth_client())
+    def test_memory_cache_is_used(self, oauth_client_patch,
+                                  core_client_patch):
+        # First call should set the cache value
+        self.auth(Request())
+        self.assertEquals(core_client_patch.call_count, 1)
+        self.assertEquals(oauth_client_patch.call_count, 1)
+
+        # Second call should use the cache value
+        self.auth(Request())
+        self.assertEquals(core_client_patch.call_count, 1)
+        self.assertEquals(oauth_client_patch.call_count, 1)
 
     @mock.patch('fxa.plugins.requests.core.Client',
                 return_value=mocked_core_client())
