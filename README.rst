@@ -3,12 +3,13 @@ PyFxA: Python library for interacting with Firefox Accounts
 ===========================================================
 
 This is python library for interacting with the Firefox Accounts ecosystem.
-It's highly experimental and subject to change.  Eventually, it is planned
-to provide easy support for the following features:
 
-  * being a direct firefox accounts authentication client
-  * being an FxA OAuth Service Provider
-  * accessing attached services
+Eventually, it is planned to provide easy support for the following features:
+
+* being a direct firefox accounts authentication client
+* being an FxA OAuth Service Provider
+* accessing attached services
+* helps interactions with Firefox Account servers wiht requests Authentication plugins.
 
 But none of that is ready yet; caveat emptor.
 
