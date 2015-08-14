@@ -4,10 +4,11 @@ Changelog
 This document describes changes between each past release.
 
 
-0.0.8 (unreleased)
+0.0.8 (2015-08-14)
 ==================
 
-- Nothing changed yet.
+ * Update setup.py to handle utf-8 characters in README and CHANGES files (#29)
+ * Add cache functionality to the Auth plugins (#30)
 
 
 0.0.7 (2015-07-23)
