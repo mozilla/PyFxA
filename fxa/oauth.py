@@ -2,18 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import json
-import time
 
 from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
+from fxa.cache import MemoryCache, DEFAULT_CACHE_EXPIRY
 from fxa.errors import OutOfProtocolError, ScopeMismatchError
 from fxa._utils import APIClient, scope_matches, get_hmac
 
 
 DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com/v1"
 VERSION_SUFFIXES = ("/v1",)
-DEFAULT_CACHE_EXPIRY = 300
 TOKEN_HMAC_SECRET = 'PyFxA Token Cache Hmac Secret'
 
 
@@ -213,33 +212,3 @@ class Client(object):
             'token': token
         }
         self.apiclient.post(url, body)
-
-
-class MemoryCache(object):
-    """Simple Memory cache."""
-
-    def __init__(self, ttl=DEFAULT_CACHE_EXPIRY):
-        self.ttl = ttl
-        self.cache = {}
-        self.expires_at = {}
-
-    def get(self, key):
-        self._cleanup()
-        value = self.cache.get(key)
-        return value
-
-    def set(self, key, value):
-        self.cache[key] = value
-        self.expires_at[key] = time.time() + self.ttl
-
-    def delete(self, key):
-        if key in self.cache:
-            del self.cache[key]
-
-        if key in self.expires_at:
-            del self.expires_at[key]
-
-    def _cleanup(self):
-        for key, expires_at in list(self.expires_at.items()):
-            if expires_at < time.time():
-                self.delete(key)
