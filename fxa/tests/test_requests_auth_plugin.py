@@ -3,7 +3,8 @@ import mock
 from os import urandom
 
 from fxa.cache import MemoryCache
-from fxa.plugins.requests import FxABrowserIDAuth, FxABearerTokenAuth
+from fxa.plugins.requests import (
+    FxABrowserIDAuth, FxABearerTokenAuth, get_cache_key)
 from fxa.tests.utils import unittest
 
 
@@ -153,3 +154,27 @@ class TestFxABearerTokenAuth(unittest.TestCase):
         assert not auth.cache
         r = auth(Request())
         self.assertIn('Authorization', r.headers)
+
+
+class GetCacheKeyTest(unittest.TestCase):
+    def test_get_cache_key_return_twice_the_same_key(self):
+        args = ['1', '2', 3]
+        self.assertEqual(get_cache_key(*args), get_cache_key(*args))
+
+    def test_get_cache_key_can_handle_list(self):
+        args = ['1', '2', [3, 'foobar']]
+        get_cache_key(*args)
+
+    def test_get_cache_key_can_handle_None(self):
+        args = ['1', None, [None, 'foobar']]
+        self.assertEqual(get_cache_key(*args), get_cache_key(*args))
+
+    def test_get_cache_key_can_handle_None_as_a_value(self):
+        args1 = ['1', None, 2]
+        args2 = ['1', 2]
+        self.assertNotEqual(get_cache_key(*args1), get_cache_key(*args2))
+
+    def test_get_cache_key_can_handle_value_as_string(self):
+        args1 = ['1', '2']
+        args2 = ['1', 2]
+        self.assertEqual(get_cache_key(*args1), get_cache_key(*args2))
