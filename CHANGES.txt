@@ -4,56 +4,62 @@ Changelog
 This document describes changes between each past release.
 
 
+0.0.9 (unreleased)
+==================
+
+- Nothing changed yet.
+
+
 0.0.8 (2015-08-14)
 ==================
 
- * Update setup.py to handle utf-8 characters in README and CHANGES files (#29)
- * Add cache functionality to the Auth plugins (#30)
+- Update setup.py to handle utf-8 characters in README and CHANGES files (#29)
+- Add cache functionality to the Auth plugins (#30)
 
 
 0.0.7 (2015-07-23)
 ==================
 
- * Use grequests if available to use PyFxA with the gevent ecosystem.
- * Add the oauth /destroy operation.
- * Profile fetch skips fields you don't have permission to read.
- * Add the BrowserID requests Auth module and related HTTPie plugin.
- * Add the BearerToken requests Auth module and related HTTPie plugin.
- * Add PyOpenSSL support for secure SSL requests handling with Python 2.
+- Use grequests if available to use PyFxA with the gevent ecosystem.
+- Add the oauth /destroy operation.
+- Profile fetch skips fields you don't have permission to read.
+- Add the BrowserID requests Auth module and related HTTPie plugin.
+- Add the BearerToken requests Auth module and related HTTPie plugin.
+- Add PyOpenSSL support for secure SSL requests handling with Python 2.
 
 
 0.0.6 (2015-03-20)
 ==================
 
- * Expose unicode in oauth cache, not bytestrings.
+- Expose unicode in oauth cache, not bytestrings.
 
 
 0.0.5 (2015-03-19)
 ==================
 
- * Specify minimum required version of `requests` dependency.
+- Specify minimum required version of `requests` dependency.
 
 
 0.0.4 (2015-03-11)
 ==================
 
- * Add a basic API for retrieving profile information
+- Add a basic API for retrieving profile information
    with an OAuth token.
 
 
 0.0.3 (2015-02-20)
 ==================
 
- * Refacotor oauth.Client to take id/secret as constructor args.
- * Add basic caching on oauth token verification.
- * Accept option "/v1" suffix on server URLs.
- * Add get_identity_assertion() method to core.Session.
- * Add methods to oauth.Client for authorizing codes and tokens.
- * Add a new error hierarchy for trust-related errors.
- * Additional sanity-checking in oauth scope checks.
+- Refacotor oauth.Client to take id/secret as constructor args.
+- Add basic caching on oauth token verification.
+- Accept option "/v1" suffix on server URLs.
+- Add get_identity_assertion() method to core.Session.
+- Add methods to oauth.Client for authorizing codes and tokens.
+- Add a new error hierarchy for trust-related errors.
+- Additional sanity-checking in oauth scope checks.
 
 
 0.0.2 (2015-01-05)
 ==================
 
- * Initial release; includes basic auth and oauth functionality.
+- Initial release; includes basic auth and oauth functionality.

@@ -50,7 +50,7 @@ else:
     OPENSSL_REQUIREMENTS = []
 
 setup(name="PyFxA",
-      version='0.0.8',
+      version='0.0.9.dev0',
       description="Firefox Accounts client library for Python",
       long_description=README + "\n\n" + CHANGES,
       classifiers=[
