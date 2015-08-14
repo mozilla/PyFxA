@@ -92,7 +92,7 @@ class TestFxABrowserIDAuth(unittest.TestCase):
 
     @mock.patch('fxa.plugins.requests.core.Client',
                 return_value=mocked_core_client())
-    def test_it_works_with_no_cache(self, client_patch):
+    def test_it_works_with_cache_deactivated(self, client_patch):
         auth = FxABrowserIDAuth(email="test@restmail.com",
                                 password="this is not a password",
                                 server_url="http://localhost:5000",
@@ -143,8 +143,8 @@ class TestFxABearerTokenAuth(unittest.TestCase):
                 return_value=mocked_core_client())
     @mock.patch('fxa.plugins.requests.oauth.Client',
                 return_value=mocked_oauth_client())
-    def test_it_works_with_no_cache(self, oauth_client_patch,
-                                    core_client_patch):
+    def test_it_works_with_cache_deactivated(self, oauth_client_patch,
+                                             core_client_patch):
         auth = FxABearerTokenAuth(
             email="test@restmail.com",
             password="this is not a password",
