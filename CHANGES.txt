@@ -7,7 +7,8 @@ This document describes changes between each past release.
 0.0.9 (unreleased)
 ==================
 
-- Nothing changed yet.
+- Remove the mention stating that PyFxA is still highly experimental (#31)
+- Do not rely on the package to be installed in order to be used (#32)
 
 
 0.0.8 (2015-08-14)
