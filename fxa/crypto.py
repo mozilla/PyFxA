@@ -7,7 +7,7 @@ fxa.crypto:  low-level cryptographic routines for Firefox Accounts
 
 """
 
-from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.backends.openssl import backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
@@ -55,7 +55,7 @@ def quick_stretch_password(email, password):
         length=32,
         salt=hkdf_namespace(b"quickStretch", email),
         iterations=1000,
-        backend=default_backend()
+        backend=backend
     )
     return kdf.derive(password)
 
@@ -71,7 +71,7 @@ def derive_key(secret, namespace, size=32):
         length=size,
         salt=b"",
         info=hkdf_namespace(namespace),
-        backend=default_backend()
+        backend=backend
     )
     return kdf.derive(secret)
 
@@ -81,7 +81,7 @@ def calculate_hmac(key, data):
     h = HMAC(
         key=key,
         algorithm=hashes.SHA256(),
-        backend=default_backend()
+        backend=backend
     )
     h.update(data)
     return h.finalize()
@@ -92,7 +92,7 @@ def verify_hmac(key, data, signature):
     h = HMAC(
         key=key,
         algorithm=hashes.SHA256(),
-        backend=default_backend()
+        backend=backend
     )
     h.update(data)
     return h.verify(signature)
@@ -141,7 +141,7 @@ def generate_keypair():
     JSON-serializable public-key data and the associated private key as a
     browserid.jwt.Key object.
     """
-    key = dsa.generate_private_key(1024, backend=default_backend())
+    key = dsa.generate_private_key(1024, backend=backend)
     params = key.parameters().parameter_numbers()
     data = {
         "algorithm": "DS",
