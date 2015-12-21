@@ -6,17 +6,17 @@ from __future__ import absolute_import
 import json
 import os
 
-from binascii import hexlify
 from hashlib import sha256
 from requests.auth import AuthBase
 from six import text_type
 from six.moves.urllib.parse import urlparse
 
 from fxa.cache import MemoryCache
+from fxa.tools.browserid import get_browserid_assertion
+from fxa.tools.bearer import get_bearer_token, DEFAULT_CLIENT_ID
 from fxa import core
 from fxa import oauth
 
-DEFAULT_CLIENT_ID = "5882386c6d801776"  # Firefox dev Client ID
 DEFAULT_CACHE_EXPIRY = 3600
 
 
@@ -73,14 +73,10 @@ class FxABrowserIDAuth(AuthBase):
             data = self.cache.get(cache_key)
 
         if not data:
-            client = core.Client(server_url=self.server_url)
-            session = client.login(self.email, self.password, keys=True)
+            bid_assertion, client_state = get_browserid_assertion(
+                self.email, self.password, self.audience,
+                self.server_url, duration=DEFAULT_CACHE_EXPIRY)
 
-            bid_assertion = session.get_identity_assertion(
-                audience=self.audience,
-                duration=DEFAULT_CACHE_EXPIRY)
-            _, keyB = session.fetch_keys()
-            client_state = hexlify(sha256(keyB).digest()[0:16]).decode('utf-8')
             if self.cache:
                 self.cache.set(cache_key,
                                json.dumps([bid_assertion, client_state]))
@@ -141,19 +137,15 @@ class FxABearerTokenAuth(AuthBase):
             token = self.cache.get(cache_key)
 
         if not token:
-            client = core.Client(server_url=self.account_server_url)
-            session = client.login(self.email, self.password, keys=True)
+            token = get_bearer_token(
+                self.email, self.password, self.scopes,
+                client_id=self.client_id,
+                account_server_url=self.account_server_url,
+                oauth_server_url=self.oauth_server_url)
 
-            url = urlparse(self.oauth_server_url)
-            audience = "%s://%s/" % (url.scheme, url.netloc)
-
-            bid_assertion = session.get_identity_assertion(audience)
-            oauth_client = oauth.Client(server_url=self.oauth_server_url)
-            token = oauth_client.authorize_token(bid_assertion,
-                                                 ' '.join(self.scopes),
-                                                 self.client_id)
             if self.cache:
                 self.cache.set(cache_key, token)
+
         request.headers["Authorization"] = "Bearer %s" % token
         return request
 
