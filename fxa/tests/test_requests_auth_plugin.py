@@ -1,5 +1,8 @@
 from binascii import hexlify
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 from os import urandom
 
 from fxa.cache import MemoryCache
