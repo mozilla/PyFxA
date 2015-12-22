@@ -95,6 +95,12 @@ def main(args=None):
                         required=False,
                         default='3600')
 
+    parser.add_argument('--prefix',
+                        help='Firefox Account user creation email prefix.',
+                        dest='prefix',
+                        required=False,
+                        default='fxa')
+
     args = vars(parser.parse_args())
     create = args['create']
     auth = args.get('auth')
@@ -128,7 +134,7 @@ def main(args=None):
         try:
             email, password = create_new_fxa_account(
                 os.getenv('FXA_USER_SALT', args.get('fxa_user_salt')),
-                args['account_server_url'])
+                args['account_server_url'], args['prefix'])
         except (ClientError, ValueError) as e:
             print('ERROR:\t %s' % e, file=sys.stderr)
             sys.exit(1)

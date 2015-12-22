@@ -12,7 +12,8 @@ from fxa import errors
 FXA_ERROR_ACCOUNT_EXISTS = 101
 
 
-def create_new_fxa_account(fxa_user_salt=None, account_server_url=None):
+def create_new_fxa_account(fxa_user_salt=None, account_server_url=None,
+                           prefix="fxa"):
     if account_server_url and 'stage' in account_server_url:
         if not fxa_user_salt:
             fxa_user_salt = os.urandom(36)
@@ -20,7 +21,7 @@ def create_new_fxa_account(fxa_user_salt=None, account_server_url=None):
             fxa_user_salt = base64.urlsafe_b64decode(fxa_user_salt)
 
         password = hmac.new(fxa_user_salt, b"loadtest").hexdigest()
-        email = "syncto-%s@restmail.net" % password
+        email = "%s-%s@restmail.net" % (prefix, password)
 
         client = core.Client(server_url=account_server_url)
 
