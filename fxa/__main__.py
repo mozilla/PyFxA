@@ -97,6 +97,15 @@ def main(args=None):
     account_server_url = args['account_server_url']
     oauth_server_url = args['oauth_server_url']
 
+    fd = sys.stdout  # By default write to the standard output
+    out = args.get('output_file')
+    if out:
+        out = os.path.abspath(out)
+        file_path = os.path.dirname(out)
+        if not os.path.exists(file_path):
+            os.makedirs(file_path)
+        fd = open(out, 'w')
+
     if auth:
         # Ask for the user password if needed
         auth = auth.split(':', 1)
@@ -142,14 +151,14 @@ def main(args=None):
         if verbose:
             print("\b\b\b\t [OK]", file=sys.stderr)
 
-        print('# ---- BEARER TOKEN INFO ----')
-        print('# User: %s' % email)
-        print('# Scopes: %s' % ' '.join(scopes))
-        print('# Account: %s' % account_server_url)
-        print('# Oauth: %s' % oauth_server_url)
-        print('# Client ID: %s' % client_id)
-        print('# ---------------------------')
-        print('export OAUTH_BEARER_TOKEN="%s"\n' % token)
+        print('# ---- BEARER TOKEN INFO ----', file=fd)
+        print('# User: %s' % email, file=fd)
+        print('# Scopes: %s' % ' '.join(scopes), file=fd)
+        print('# Account: %s' % account_server_url, file=fd)
+        print('# Oauth: %s' % oauth_server_url, file=fd)
+        print('# Client ID: %s' % client_id, file=fd)
+        print('# ---------------------------', file=fd)
+        print('export OAUTH_BEARER_TOKEN="%s"\n' % token, file=fd)
 
     if args['browserid']:
         # Generate a BrowserID assertion for the user and write it into a file.
@@ -169,14 +178,15 @@ def main(args=None):
         if verbose:
             print("\b\b\b\t [OK]", file=sys.stderr)
 
-        print('# ---- BROWSER ID ASSERTION INFO ----')
-        print('# User: %s' % email)
-        print('# Audience: %s' % audience)
-        print('# Account: %s' % account_server_url)
-        print('# ------------------------------------')
-        print('export FXA_BROWSERID_ASSERTION="%s"' % bid_assertion)
-        print('export FXA_CLIENT_STATE="%s"\n' % client_state)
+        print('# ---- BROWSER ID ASSERTION INFO ----', file=fd)
+        print('# User: %s' % email, file=fd)
+        print('# Audience: %s' % audience, file=fd)
+        print('# Account: %s' % account_server_url, file=fd)
+        print('# ------------------------------------', file=fd)
+        print('export FXA_BROWSERID_ASSERTION="%s"' % bid_assertion, file=fd)
+        print('export FXA_CLIENT_STATE="%s"\n' % client_state, file=fd)
 
+    fd.close()
 
 if __name__ == "__main__":
     main()
