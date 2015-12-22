@@ -42,14 +42,11 @@ REQUIREMENTS = [
     "six"
 ]
 
-if PY2:
-    OPENSSL_REQUIREMENTS = [
-        "pyopenssl",
-        "ndg-httpsclient",
-        "pyasn1"
-    ]
-else:
-    OPENSSL_REQUIREMENTS = []
+if sys.version_info < (2, 7, 9):
+    # For secure SSL connexion with Python 2.7 (InsecurePlatformWarning)
+    REQUIREMENTS.append('PyOpenSSL')
+    REQUIREMENTS.append('ndg-httpsclient')
+    REQUIREMENTS.append('pyasn1')
 
 setup(name="PyFxA",
       version=fxa.__version__,
@@ -75,8 +72,5 @@ setup(name="PyFxA",
       include_package_data=True,
       zip_safe=False,
       install_requires=REQUIREMENTS,
-      extras_require={
-          'openssl': OPENSSL_REQUIREMENTS
-      },
       tests_require=test_requires,
       test_suite="fxa")
