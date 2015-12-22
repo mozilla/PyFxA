@@ -6,15 +6,15 @@ from six.moves.urllib.parse import urlparse
 from fxa import core
 from fxa import oauth
 
-DEFAULT_CLIENT_ID = "5882386c6d801776"  # Firefox dev Client ID
-FXA_API_URL = "https://api-accounts.stage.mozaws.net/v1"
-FXA_OAUTH_URL = "https://oauth.stage.mozaws.net/v1"
-
 
 def get_bearer_token(email, password, scopes=None,
-                     account_server_url=FXA_API_URL,
-                     oauth_server_url=FXA_OAUTH_URL,
-                     client_id=DEFAULT_CLIENT_ID):
+                     account_server_url=None,
+                     oauth_server_url=None,
+                     client_id=None):
+
+    if not account_server_url and not oauth_server_url and not client_id:
+        raise ValueError('Please define an account_server_url, a '
+                         'oauth_server_url endpoint and a client_id.')
 
     if scopes is None:
         scopes = ['profile']

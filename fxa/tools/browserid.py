@@ -7,12 +7,10 @@ from hashlib import sha256
 
 from fxa import core
 
-FXA_STAGE_API_URL = "https://api-accounts.stage.mozaws.net/v1"
-
 
 def get_browserid_assertion(email, password, audience,
-                            account_server_url=FXA_STAGE_API_URL,
-                            duration=None):
+                            account_server_url=None,
+                            duration=core.DEFAULT_ASSERTION_DURATION):
 
     client = core.Client(server_url=account_server_url)
     session = client.login(email, password, keys=True)

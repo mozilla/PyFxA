@@ -9,12 +9,11 @@ import hmac
 from fxa import core
 from fxa import errors
 
-FXA_API_URL = "https://api-accounts.stage.mozaws.net/v1"
 FXA_ERROR_ACCOUNT_EXISTS = 101
 
 
-def create_new_fxa_account(fxa_user_salt=None, account_server_url=FXA_API_URL):
-    if 'stage' in account_server_url:
+def create_new_fxa_account(fxa_user_salt=None, account_server_url=None):
+    if account_server_url and 'stage' in account_server_url:
         if not fxa_user_salt:
             fxa_user_salt = os.urandom(36)
         else:
