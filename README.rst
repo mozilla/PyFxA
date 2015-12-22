@@ -161,6 +161,28 @@ You can use the httpie plugin provided with PyFxA to build the BrowserID request
 	``BID_WITH_CLIENT_STATE`` environment variable.
 
 
+Using Firefox Account Bearer Token with Requests
+================================================
+
+You can use the ``FxABearerTokenAuth`` to build the Bearer Token:
+
+.. code-block:: python
+
+    from fxa.core import Client
+    from fxa.plugins.requests import FxABearerTokenAuth
+
+    email = acct.email
+    password = "MySecretPassword"
+
+    raw_resp = requests.get('https://profile.accounts.firefox.com/v1/profile',
+                            auth=FxABearerTokenAuth(email, password,
+                                                    ['profile'], client_id))
+
+    raw_resp.raise_for_status()
+    resp = raw_resp.json()
+    user_id = resp['uid']
+
+
 Using Firefox Account Bearer Tokens with HTTPie
 ===============================================
 
