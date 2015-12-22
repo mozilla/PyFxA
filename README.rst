@@ -14,17 +14,6 @@ Eventually, it is planned to provide easy support for the following features:
 But none of that is ready yet; caveat emptor.
 
 
-Installing PyFxA with OpenSSL support
-=====================================
-
-In case your Python version raises ``InsecurePlatformWarning`` you can
-install PyFxA with OpenSSL support:
-
-.. code-block::
-
-    pip install PyFxA[openssl]
-
-
 Firefox Accounts
 ================
 
