@@ -89,6 +89,12 @@ def main(args=None):
                         required=False,
                         default='https://token.services.mozilla.com/')
 
+    parser.add_argument('--duration',
+                        help='Firefox BrowserID assertion duration.',
+                        dest='duration',
+                        required=False,
+                        default='3600')
+
     args = vars(parser.parse_args())
     create = args['create']
     auth = args.get('auth')
@@ -163,6 +169,7 @@ def main(args=None):
     if args['browserid']:
         # Generate a BrowserID assertion for the user and write it into a file.
         audience = args['audience']
+        duration = int(args['duration'])
 
         if verbose:
             print('# Creating the token...', end='', file=sys.stderr)
@@ -170,7 +177,7 @@ def main(args=None):
 
         try:
             bid_assertion, client_state = get_browserid_assertion(
-                email, password, audience, account_server_url)
+                email, password, audience, account_server_url, duration)
         except ClientError as e:
             print('ERROR:\t %s' % e, file=sys.stderr)
             sys.exit(1)

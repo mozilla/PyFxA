@@ -13,11 +13,12 @@ from six.moves.urllib.parse import urlparse
 
 from fxa.cache import MemoryCache
 from fxa.tools.browserid import get_browserid_assertion
-from fxa.tools.bearer import get_bearer_token, DEFAULT_CLIENT_ID
+from fxa.tools.bearer import get_bearer_token
 from fxa import core
 from fxa import oauth
 
 DEFAULT_CACHE_EXPIRY = 3600
+DEFAULT_CLIENT_ID = "5882386c6d801776"  # Firefox dev Client ID
 
 
 def get_cache_key(*args):
