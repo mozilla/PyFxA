@@ -188,7 +188,7 @@ def main(args=None):
 
     if args['browserid']:
         # Generate a BrowserID assertion for the user and write it into a file.
-        audience = args.get('audience', token_server_url)
+        audience = args['audience'] or token_server_url
         duration = int(args['duration'])
 
         logger.info('Creating the token.')
