@@ -2,18 +2,22 @@
 from __future__ import print_function
 import argparse
 import getpass
+import logging
 import os
 import re
 import sys
 
+from fxa.constants import ENVIRONMENT_URLS
 from fxa.errors import ClientError
+from fxa.tools.create_user import create_new_fxa_account
 from fxa.tools.bearer import get_bearer_token
 from fxa.tools.browserid import get_browserid_assertion
-from fxa.tools.fxa import create_new_fxa_account
 
-FXA_API_URL = "https://api-accounts.stage.mozaws.net/v1"
-FXA_OAUTH_URL = "https://oauth.stage.mozaws.net/v1"
 DEFAULT_CLIENT_ID = "5882386c6d801776"  # Firefox dev Client ID
+DEFAULT_ENV = 'stage'
+
+logger = logging.getLogger("fxa-client")
+logging.basicConfig(level=logging.ERROR)
 
 
 def main(args=None):
@@ -32,7 +36,7 @@ def main(args=None):
                         dest='browserid',
                         action='store_true')
 
-    parser.add_argument('--create', '-c',
+    parser.add_argument('--create-user', '-c',
                         help='Create a new user',
                         dest='create',
                         action='store_true')
@@ -59,17 +63,21 @@ def main(args=None):
                         required=False)
 
     # FxA server configuration
+    parser.add_argument('--env',
+                        help='The Firefox Account env to use',
+                        dest='env',
+                        choices=ENVIRONMENT_URLS.keys(),
+                        default=DEFAULT_ENV,
+                        required=False)
     parser.add_argument('--account-server',
                         help='Firefox Account server URL',
                         dest='account_server_url',
-                        required=False,
-                        default=FXA_API_URL)
+                        required=False)
 
     parser.add_argument('--oauth-server',
                         help='Firefox Account OAuth server URL',
                         dest='oauth_server_url',
-                        required=False,
-                        default=FXA_OAUTH_URL)
+                        required=False)
 
     parser.add_argument('--client-id',
                         help='Firefox Account OAuth client id.',
@@ -86,8 +94,7 @@ def main(args=None):
     parser.add_argument('--audience',
                         help='Firefox BrowserID assertion audience.',
                         dest='audience',
-                        required=False,
-                        default='https://token.services.mozilla.com/')
+                        required=False)
 
     parser.add_argument('--duration',
                         help='Firefox BrowserID assertion duration.',
@@ -95,7 +102,7 @@ def main(args=None):
                         required=False,
                         default='3600')
 
-    parser.add_argument('--prefix',
+    parser.add_argument('--user-email-prefix', '--prefix',
                         help='Firefox Account user creation email prefix.',
                         dest='prefix',
                         required=False,
@@ -106,10 +113,22 @@ def main(args=None):
     auth = args.get('auth')
     verbose = args['verbose']
 
-    account_server_url = args['account_server_url']
-    oauth_server_url = args['oauth_server_url']
+    if verbose:
+        logger.setLevel(logging.INFO)
+
+    fxa_env = args['env']
+    account_server_url = ENVIRONMENT_URLS[fxa_env]['authentication']
+    oauth_server_url = ENVIRONMENT_URLS[fxa_env]['oauth']
+    token_server_url = ENVIRONMENT_URLS[fxa_env]['token']
+
+    if args['account_server_url']:
+        account_server_url = args['account_server_url']
+
+    if args['oauth_server_url']:
+        oauth_server_url = args['oauth_server_url']
 
     fd = sys.stdout  # By default write to the standard output
+    fd_is_to_close = False
     out = args.get('output_file')
     if out:
         out = os.path.abspath(out)
@@ -117,6 +136,7 @@ def main(args=None):
         if not os.path.exists(file_path):
             os.makedirs(file_path)
         fd = open(out, 'w')
+        fd_is_to_close = True
 
     if auth:
         # Ask for the user password if needed
@@ -127,20 +147,17 @@ def main(args=None):
                                        % auth[0])
     elif create:
         # Create a new user
-        if verbose:
-            print('# Creating the account...', end='', file=sys.stderr)
-            sys.stderr.flush()
+        logger.info('Creating the account.')
 
         try:
             email, password = create_new_fxa_account(
                 os.getenv('FXA_USER_SALT', args.get('fxa_user_salt')),
-                args['account_server_url'], args['prefix'])
+                account_server_url, args['prefix'])
         except (ClientError, ValueError) as e:
-            print('ERROR:\t %s' % e, file=sys.stderr)
+            logger.error(e)
             sys.exit(1)
 
-        if verbose:
-            print("\b\b\b\t [OK]", file=sys.stderr)
+        logger.info('Account created: %s' % email)
 
     if args['bearer']:
         # Generate a Bearer Token for the user and write it into a file.
@@ -148,20 +165,17 @@ def main(args=None):
                   if s.strip()]
         client_id = args['client_id']
 
-        if verbose:
-            print('# Generating the Bearer Token...', end='', file=sys.stderr)
-            sys.stderr.flush()
+        logger.info('Generating the Bearer Token.')
 
         try:
             token = get_bearer_token(email, password, scopes,
                                      account_server_url,
                                      oauth_server_url, client_id)
         except ClientError as e:
-            print('ERROR:\t %s' % e, file=sys.stderr)
+            logger.error(e)
             sys.exit(1)
 
-        if verbose:
-            print("\b\b\b\t [OK]", file=sys.stderr)
+        logger.info('Bearer Token generated.')
 
         print('# ---- BEARER TOKEN INFO ----', file=fd)
         print('# User: %s' % email, file=fd)
@@ -174,22 +188,19 @@ def main(args=None):
 
     if args['browserid']:
         # Generate a BrowserID assertion for the user and write it into a file.
-        audience = args['audience']
+        audience = args.get('audience', token_server_url)
         duration = int(args['duration'])
 
-        if verbose:
-            print('# Creating the token...', end='', file=sys.stderr)
-            sys.stderr.flush()
+        logger.info('Creating the token.')
 
         try:
             bid_assertion, client_state = get_browserid_assertion(
                 email, password, audience, account_server_url, duration)
         except ClientError as e:
-            print('ERROR:\t %s' % e, file=sys.stderr)
+            logger.error(e)
             sys.exit(1)
 
-        if verbose:
-            print("\b\b\b\t [OK]", file=sys.stderr)
+        logger.info('Token created.')
 
         print('# ---- BROWSER ID ASSERTION INFO ----', file=fd)
         print('# User: %s' % email, file=fd)
@@ -199,7 +210,8 @@ def main(args=None):
         print('export FXA_BROWSERID_ASSERTION="%s"' % bid_assertion, file=fd)
         print('export FXA_CLIENT_STATE="%s"\n' % client_state, file=fd)
 
-    fd.close()
+    if fd_is_to_close:
+        fd.close()
 
 if __name__ == "__main__":
     main()

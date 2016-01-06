@@ -36,5 +36,6 @@ def create_new_fxa_account(fxa_user_salt=None, account_server_url=None,
             return email, password
     else:
         message = ("You are not using stage (%s), make sure your FxA test "
-                   "account exists: https://123done-prod.dev.lcip.org/")
+                   "account exists: https://123done-prod.dev.lcip.org/"
+                   % account_server_url)
         raise ValueError(message)

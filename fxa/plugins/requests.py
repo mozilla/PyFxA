@@ -12,11 +12,12 @@ from six import text_type
 from six.moves.urllib.parse import urlparse
 
 from fxa.cache import MemoryCache
+from fxa.constants import PRODUCTION_URLS
 from fxa.tools.browserid import get_browserid_assertion
 from fxa.tools.bearer import get_bearer_token
-from fxa import core
-from fxa import oauth
 
+FXA_ACCOUNT_URL = PRODUCTION_URLS['authentication']
+FXA_OAUTH_URL = PRODUCTION_URLS['oauth']
 DEFAULT_CACHE_EXPIRY = 3600
 DEFAULT_CLIENT_ID = "5882386c6d801776"  # Firefox dev Client ID
 
@@ -47,7 +48,7 @@ class FxABrowserIDAuth(AuthBase):
 
     """
     def __init__(self, email, password, audience=None, with_client_state=False,
-                 server_url=core.DEFAULT_SERVER_URL, cache=True,
+                 server_url=FXA_ACCOUNT_URL, cache=True,
                  ttl=None):
         self.email = email
         self.password = password
@@ -111,8 +112,8 @@ else:
 
 class FxABearerTokenAuth(AuthBase):
     def __init__(self, email, password, scopes=None, client_id=None,
-                 account_server_url=core.DEFAULT_SERVER_URL,
-                 oauth_server_url=oauth.DEFAULT_SERVER_URL,
+                 account_server_url=FXA_ACCOUNT_URL,
+                 oauth_server_url=FXA_OAUTH_URL,
                  cache=True, ttl=DEFAULT_CACHE_EXPIRY):
         self.email = email
         self.password = password
@@ -168,9 +169,8 @@ else:
             client_id = os.getenv("FXA_CLIENT_ID", DEFAULT_CLIENT_ID)
             scopes = os.getenv("FXA_SCOPES")
             account_server_url = os.getenv("FXA_ACCOUNT_SERVER_URL",
-                                           core.DEFAULT_SERVER_URL)
-            oauth_server_url = os.getenv("FXA_OAUTH_SERVER_URL",
-                                         oauth.DEFAULT_SERVER_URL)
+                                           FXA_ACCOUNT_URL)
+            oauth_server_url = os.getenv("FXA_OAUTH_SERVER_URL", FXA_OAUTH_URL)
             if scopes:
                 scopes = scopes.split()
             return FxABearerTokenAuth(fxa_id, fxa_password, scopes, client_id,

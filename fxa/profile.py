@@ -3,11 +3,12 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 from six import string_types
 
-from fxa.errors import OutOfProtocolError
 from fxa._utils import APIClient, BearerTokenAuth
+from fxa.constants import PRODUCTION_URLS
+from fxa.errors import OutOfProtocolError
 
 
-DEFAULT_SERVER_URL = "https://profile.accounts.firefox.com/v1"
+DEFAULT_SERVER_URL = PRODUCTION_URLS['profile']
 VERSION_SUFFIXES = ("/v1",)
 DEFAULT_CACHE_EXPIRY = 300
 

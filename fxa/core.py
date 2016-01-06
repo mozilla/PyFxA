@@ -10,6 +10,7 @@ import browserid.jwt
 import browserid.utils
 
 from fxa._utils import hexstr, APIClient, HawkTokenAuth
+from fxa.constants import PRODUCTION_URLS
 from fxa.crypto import (
     quick_stretch_password,
     generate_keypair,
@@ -18,7 +19,7 @@ from fxa.crypto import (
 )
 
 
-DEFAULT_SERVER_URL = "https://api.accounts.firefox.com/v1"
+DEFAULT_SERVER_URL = PRODUCTION_URLS['authentication']
 VERSION_SUFFIXES = ("/v1",)
 
 DEFAULT_ASSERTION_DURATION = 60

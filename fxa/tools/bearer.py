@@ -12,9 +12,19 @@ def get_bearer_token(email, password, scopes=None,
                      oauth_server_url=None,
                      client_id=None):
 
-    if not account_server_url and not oauth_server_url and not client_id:
-        raise ValueError('Please define an account_server_url, a '
-                         'oauth_server_url endpoint and a client_id.')
+    message = None
+
+    if not account_server_url:
+        message = 'Please define an account_server_url'
+
+    elif not oauth_server_url:
+        message = 'Please define an oauth_server_url'
+
+    elif not client_id:
+        message = 'Please define a client_id'
+
+    if message:
+        raise ValueError(message)
 
     if scopes is None:
         scopes = ['profile']
