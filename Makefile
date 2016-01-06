@@ -10,37 +10,22 @@ all:	build test
 .PHONY: build
 build: $(VENVDIR)/COMPLETE
 $(VENVDIR)/COMPLETE: dev-requirements.txt
-	virtualenv --no-site-packages --python=`which python` --distribute $(VENVDIR)
-	$(INSTALL) --upgrade Distribute pip
+	virtualenv --python=`which python` $(VENVDIR)
+	$(INSTALL) --upgrade pip
 	$(INSTALL) -r ./dev-requirements.txt
-	$(INSTALL) -e .[openssl]
+	$(INSTALL) -e .
 	touch $(VENVDIR)/COMPLETE
 
 .PHONY: test
-test: $(BINDIR)/flake8 $(BINDIR)/nosetests $(BINDIR)/coverage
+test: $(BINDIR)/flake8 $(BINDIR)/nosetests
+	$(BINDIR)/nosetests --with-mocha-reporter --with-coverage --cover-package=fxa ./fxa
 	$(BINDIR)/flake8 ./fxa
-	$(BINDIR)/coverage erase
-	$(BINDIR)/coverage run $(BINDIR)/nosetests -s ./fxa
-	$(BINDIR)/coverage report --include="*fxa*"
-
-.PHONY: coverage
-coverage: htmlcov/index.html
-	$(BINDIR)/coverage report --include="*fxa*"
-
-htmlcov/index.html: .coverage
-	$(BINDIR)/coverage html --include="*fxa*"
-
-.coverage: $(BINDIR)/coverage
-	$(BINDIR)/coverage run $(BINDIR)/nosetests ./fxa
 
 $(BINDIR)/flake8: $(VENVDIR)/COMPLETE
 	$(INSTALL) -U --force-reinstall flake8
 
 $(BINDIR)/nosetests: $(VENVDIR)/COMPLETE
-	$(INSTALL) -U --force-reinstall nose
-
-$(BINDIR)/coverage: $(VENVDIR)/COMPLETE
-	$(INSTALL) -U --force-reinstall coverage
+	$(INSTALL) -U --force-reinstall nose nose-cov nose-mocha-reporter
 
 .PHONY: pyshell
 pyshell: $(VENVDIR)/COMPLETE
@@ -49,6 +34,9 @@ pyshell: $(VENVDIR)/COMPLETE
 .PHONY: clean
 clean:
 	rm -rf htmlcov .coverage dist
+
+dist-clean:
+	rm -fr build/
 
 .PHONY: clobber
 clobber: clean

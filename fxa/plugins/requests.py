@@ -96,7 +96,7 @@ try:
     from httpie.plugins import AuthPlugin
 except ImportError:
     pass
-else:
+else:  # pragma: no cover
     class FxABrowserIDPlugin(AuthPlugin):
         name = 'Firefox Account BrowserID Auth'
         auth_type = 'fxa-browserid'
@@ -157,7 +157,7 @@ try:
     from httpie.plugins import AuthPlugin
 except ImportError:
     pass
-else:
+else:  # pragma: no cover
     class FxABearerTokenPlugin(AuthPlugin):
 
         name = 'Firefox Account Bearer Token Auth'

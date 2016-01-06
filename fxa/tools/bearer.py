@@ -15,13 +15,13 @@ def get_bearer_token(email, password, scopes=None,
     message = None
 
     if not account_server_url:
-        message = 'Please define an account_server_url'
+        message = 'Please define an account_server_url.'
 
     elif not oauth_server_url:
-        message = 'Please define an oauth_server_url'
+        message = 'Please define an oauth_server_url.'
 
     elif not client_id:
-        message = 'Please define a client_id'
+        message = 'Please define a client_id.'
 
     if message:
         raise ValueError(message)
