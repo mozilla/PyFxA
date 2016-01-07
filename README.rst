@@ -152,7 +152,7 @@ With Requests
 =============
 
 Using Firefox Account BrowserID with Requests
-+++++++++++++++++++++++++++++++++++++++++++++
+---------------------------------------------
 
 You can use the ``FxABrowserIDAuth`` to build the BrowserID assertion:
 
@@ -174,7 +174,7 @@ You can use the ``FxABrowserIDAuth`` to build the BrowserID assertion:
 
 
 Using Firefox Account Bearer Token with Requests
-++++++++++++++++++++++++++++++++++++++++++++++++
+------------------------------------------------
 
 You can use the ``FxABearerTokenAuth`` to build the Bearer Token:
 
@@ -199,7 +199,7 @@ With HTTPie
 ===========
 
 Using Firefox Account BrowserID with HTTPie
-+++++++++++++++++++++++++++++++++++++++++++
+-------------------------------------------
 
 You can use the httpie plugin provided with PyFxA to build the BrowserID request:
 
@@ -248,7 +248,7 @@ You can use the httpie plugin provided with PyFxA to build the BrowserID request
 
 
 Using Firefox Account Bearer Tokens with HTTPie
-+++++++++++++++++++++++++++++++++++++++++++++++
+-----------------------------------------------
 
 You can use the httpie plugin provided with PyFxA to build the Bearer
 token request:
