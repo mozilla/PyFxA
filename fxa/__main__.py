@@ -119,6 +119,7 @@ def main(args=None):
     fxa_env = args['env']
     account_server_url = ENVIRONMENT_URLS[fxa_env]['authentication']
     oauth_server_url = ENVIRONMENT_URLS[fxa_env]['oauth']
+    content_server_url = ENVIRONMENT_URLS[fxa_env]['content']
     token_server_url = ENVIRONMENT_URLS[fxa_env]['token']
 
     if args['account_server_url']:
@@ -152,7 +153,7 @@ def main(args=None):
         try:
             email, password = create_new_fxa_account(
                 os.getenv('FXA_USER_SALT', args.get('fxa_user_salt')),
-                account_server_url, args['prefix'])
+                account_server_url, args['prefix'], content_server_url)
         except (ClientError, ValueError) as e:
             logger.error(e)
             sys.exit(1)

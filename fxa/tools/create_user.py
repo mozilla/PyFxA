@@ -13,7 +13,7 @@ FXA_ERROR_ACCOUNT_EXISTS = 101
 
 
 def create_new_fxa_account(fxa_user_salt=None, account_server_url=None,
-                           prefix="fxa"):
+                           prefix="fxa", content_server_url=None):
     if account_server_url and 'stage' in account_server_url:
         if not fxa_user_salt:
             fxa_user_salt = os.urandom(36)
@@ -36,6 +36,6 @@ def create_new_fxa_account(fxa_user_salt=None, account_server_url=None,
             return email, password
     else:
         message = ("You are not using stage (%s), make sure your FxA test "
-                   "account exists: https://123done-prod.dev.lcip.org/"
-                   % account_server_url)
+                   "account exists: %s" % (account_server_url,
+                                           content_server_url))
         raise ValueError(message)
