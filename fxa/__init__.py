@@ -7,7 +7,7 @@ Python library for interacting with the Firefox Accounts ecosystem.
 
 """
 
-__version__ = '0.0.10.dev0'
+__version__ = '0.1.0'
 __ver_tuple__ = tuple(__version__.split('.'))
 
 
