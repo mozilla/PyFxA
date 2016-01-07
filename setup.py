@@ -48,6 +48,7 @@ if sys.version_info < (2, 7, 9):
     REQUIREMENTS.append('ndg-httpsclient')
     REQUIREMENTS.append('pyasn1')
 
+
 setup(name="PyFxA",
       version=fxa.__version__,
       description="Firefox Accounts client library for Python",
@@ -61,7 +62,10 @@ setup(name="PyFxA",
           'httpie.plugins.auth.v1': [
               'httpie_fxa-browserid = fxa.plugins.requests:FxABrowserIDPlugin',
               'httpie_fxa-bearer = fxa.plugins.requests:FxABearerTokenPlugin'
-          ]
+          ],
+          'console_scripts': [
+              'fxa-client = fxa.__main__:main'
+          ],
       },
       license="MPLv2.0",
       author="Mozilla Services",

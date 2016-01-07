@@ -6,18 +6,20 @@ from __future__ import absolute_import
 import json
 import os
 
-from binascii import hexlify
 from hashlib import sha256
 from requests.auth import AuthBase
 from six import text_type
 from six.moves.urllib.parse import urlparse
 
 from fxa.cache import MemoryCache
-from fxa import core
-from fxa import oauth
+from fxa.constants import PRODUCTION_URLS
+from fxa.tools.browserid import get_browserid_assertion
+from fxa.tools.bearer import get_bearer_token
 
-DEFAULT_CLIENT_ID = "5882386c6d801776"  # Firefox dev Client ID
+FXA_ACCOUNT_URL = PRODUCTION_URLS['authentication']
+FXA_OAUTH_URL = PRODUCTION_URLS['oauth']
 DEFAULT_CACHE_EXPIRY = 3600
+DEFAULT_CLIENT_ID = "5882386c6d801776"  # Firefox dev Client ID
 
 
 def get_cache_key(*args):
@@ -46,7 +48,7 @@ class FxABrowserIDAuth(AuthBase):
 
     """
     def __init__(self, email, password, audience=None, with_client_state=False,
-                 server_url=core.DEFAULT_SERVER_URL, cache=True,
+                 server_url=FXA_ACCOUNT_URL, cache=True,
                  ttl=None):
         self.email = email
         self.password = password
@@ -73,14 +75,10 @@ class FxABrowserIDAuth(AuthBase):
             data = self.cache.get(cache_key)
 
         if not data:
-            client = core.Client(server_url=self.server_url)
-            session = client.login(self.email, self.password, keys=True)
+            bid_assertion, client_state = get_browserid_assertion(
+                self.email, self.password, self.audience,
+                self.server_url, duration=DEFAULT_CACHE_EXPIRY)
 
-            bid_assertion = session.get_identity_assertion(
-                audience=self.audience,
-                duration=DEFAULT_CACHE_EXPIRY)
-            _, keyB = session.fetch_keys()
-            client_state = hexlify(sha256(keyB).digest()[0:16]).decode('utf-8')
             if self.cache:
                 self.cache.set(cache_key,
                                json.dumps([bid_assertion, client_state]))
@@ -98,7 +96,7 @@ try:
     from httpie.plugins import AuthPlugin
 except ImportError:
     pass
-else:
+else:  # pragma: no cover
     class FxABrowserIDPlugin(AuthPlugin):
         name = 'Firefox Account BrowserID Auth'
         auth_type = 'fxa-browserid'
@@ -114,8 +112,8 @@ else:
 
 class FxABearerTokenAuth(AuthBase):
     def __init__(self, email, password, scopes=None, client_id=None,
-                 account_server_url=core.DEFAULT_SERVER_URL,
-                 oauth_server_url=oauth.DEFAULT_SERVER_URL,
+                 account_server_url=FXA_ACCOUNT_URL,
+                 oauth_server_url=FXA_OAUTH_URL,
                  cache=True, ttl=DEFAULT_CACHE_EXPIRY):
         self.email = email
         self.password = password
@@ -141,19 +139,15 @@ class FxABearerTokenAuth(AuthBase):
             token = self.cache.get(cache_key)
 
         if not token:
-            client = core.Client(server_url=self.account_server_url)
-            session = client.login(self.email, self.password, keys=True)
+            token = get_bearer_token(
+                self.email, self.password, self.scopes,
+                client_id=self.client_id,
+                account_server_url=self.account_server_url,
+                oauth_server_url=self.oauth_server_url)
 
-            url = urlparse(self.oauth_server_url)
-            audience = "%s://%s/" % (url.scheme, url.netloc)
-
-            bid_assertion = session.get_identity_assertion(audience)
-            oauth_client = oauth.Client(server_url=self.oauth_server_url)
-            token = oauth_client.authorize_token(bid_assertion,
-                                                 ' '.join(self.scopes),
-                                                 self.client_id)
             if self.cache:
                 self.cache.set(cache_key, token)
+
         request.headers["Authorization"] = "Bearer %s" % token
         return request
 
@@ -163,7 +157,7 @@ try:
     from httpie.plugins import AuthPlugin
 except ImportError:
     pass
-else:
+else:  # pragma: no cover
     class FxABearerTokenPlugin(AuthPlugin):
 
         name = 'Firefox Account Bearer Token Auth'
@@ -175,9 +169,8 @@ else:
             client_id = os.getenv("FXA_CLIENT_ID", DEFAULT_CLIENT_ID)
             scopes = os.getenv("FXA_SCOPES")
             account_server_url = os.getenv("FXA_ACCOUNT_SERVER_URL",
-                                           core.DEFAULT_SERVER_URL)
-            oauth_server_url = os.getenv("FXA_OAUTH_SERVER_URL",
-                                         oauth.DEFAULT_SERVER_URL)
+                                           FXA_ACCOUNT_URL)
+            oauth_server_url = os.getenv("FXA_OAUTH_SERVER_URL", FXA_OAUTH_URL)
             if scopes:
                 scopes = scopes.split()
             return FxABearerTokenAuth(fxa_id, fxa_password, scopes, client_id,

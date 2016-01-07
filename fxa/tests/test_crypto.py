@@ -1,16 +1,18 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-
+from __future__ import unicode_literals
 import os
 import re
 from binascii import unhexlify
+from six import text_type
 
 from fxa.crypto import (
     quick_stretch_password,
     derive_key,
     bundle,
     unbundle,
+    hkdf_namespace,
     xor
 )
 
@@ -80,3 +82,11 @@ class TestCoreCrypto(unittest.TestCase):
         self.assertEqual(xor(b"abc", b"def"), b"\x05\x07\x05")
         with self.assertRaises(ValueError):
             xor(b"shorter", b"longer string")
+
+    def test_hkdf_namespace_handle_unicode_strings(self):
+        kw = hkdf_namespace(text_type("foobar"))
+        self.assertEquals(kw, b"identity.mozilla.com/picl/v1/foobar")
+
+    def test_hkdf_namespace_handle_bytes_strings(self):
+        kw = hkdf_namespace("foobar".encode('utf-8'))
+        self.assertEquals(kw, b"identity.mozilla.com/picl/v1/foobar")

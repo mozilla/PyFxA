@@ -7,11 +7,12 @@ from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
 from fxa.cache import MemoryCache, DEFAULT_CACHE_EXPIRY
+from fxa.constants import PRODUCTION_URLS
 from fxa.errors import OutOfProtocolError, ScopeMismatchError
 from fxa._utils import APIClient, scope_matches, get_hmac
 
 
-DEFAULT_SERVER_URL = "https://oauth.accounts.firefox.com/v1"
+DEFAULT_SERVER_URL = PRODUCTION_URLS['oauth']
 VERSION_SUFFIXES = ("/v1",)
 TOKEN_HMAC_SECRET = 'PyFxA Token Cache Hmac Secret'
 

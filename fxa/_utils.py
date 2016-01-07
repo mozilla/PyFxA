@@ -18,7 +18,7 @@ from binascii import hexlify, unhexlify
 from base64 import b64encode
 try:
     import cPickle as pickle
-except ImportError:
+except ImportError:  # pragma: no cover
     import pickle
 
 from six import PY3
@@ -34,8 +34,7 @@ import fxa.crypto
 
 if not PY3:
     hexstr = hexlify
-else:
-
+else:  # pragma: no cover
     def hexstr(data):
         """Like binascii.hexlify, but always returns a str instance."""
         return hexlify(data).decode("ascii")

@@ -1,11 +1,8 @@
-from binascii import hexlify
-import mock
-from os import urandom
-
 from fxa.cache import MemoryCache
 from fxa.plugins.requests import (
     FxABrowserIDAuth, FxABearerTokenAuth, get_cache_key, DEFAULT_CACHE_EXPIRY)
-from fxa.tests.utils import unittest
+from fxa.tests.utils import (
+    unittest, mock, mocked_core_client, mocked_oauth_client)
 
 
 class Request(object):
@@ -14,22 +11,6 @@ class Request(object):
         self.body = ''
         self.url = 'http://www.example.com'
         self.headers = {'Content-Type': 'application/json'}
-
-
-def mocked_core_client():
-    client = mock.MagicMock()
-    session = mock.MagicMock()
-    session.get_identity_assertion.return_value = 'abcd'
-    session.fetch_keys.return_value = ('keyA'.encode('utf-8'),
-                                       'keyB'.encode('utf-8'))
-    client.login.return_value = session
-    return client
-
-
-def mocked_oauth_client():
-    client = mock.MagicMock()
-    client.authorize_token.return_value = hexlify(urandom(32))
-    return client
 
 
 class TestFxABrowserIDAuth(unittest.TestCase):
@@ -41,19 +22,19 @@ class TestFxABrowserIDAuth(unittest.TestCase):
                                      with_client_state=True,
                                      server_url="http://localhost:5000")
 
-    @mock.patch('fxa.plugins.requests.core.Client',
+    @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
     def test_audience_is_parsed(self, client_patch):
         self.auth(Request())
         self.assertEquals(self.auth.audience, "http://www.example.com/")
 
-    @mock.patch('fxa.plugins.requests.core.Client',
+    @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
     def test_server_url_is_passed_to_client(self, client_patch):
         self.auth(Request())
         client_patch.assert_called_with(server_url="http://localhost:5000")
 
-    @mock.patch('fxa.plugins.requests.core.Client',
+    @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
     def test_header_are_set_to_request(self, client_patch):
         r = self.auth(Request())
@@ -74,7 +55,7 @@ class TestFxABrowserIDAuth(unittest.TestCase):
             get_identity_assertion.assert_called_with(
                 audience="http://www.example.com/", duration=3600)
 
-    @mock.patch('fxa.plugins.requests.core.Client',
+    @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
     def test_client_state_not_set_by_default(self, client_patch):
         auth = FxABrowserIDAuth(email="test@restmail.com",
@@ -83,7 +64,7 @@ class TestFxABrowserIDAuth(unittest.TestCase):
         r = auth(Request())
         self.assertNotIn('X-Client-State', r.headers)
 
-    @mock.patch('fxa.plugins.requests.core.Client',
+    @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
     def test_memory_cache_is_set_by_default(self, client_patch):
         auth = FxABrowserIDAuth(email="test@restmail.com",
@@ -92,7 +73,7 @@ class TestFxABrowserIDAuth(unittest.TestCase):
         assert type(auth.cache) is MemoryCache
         self.assertEqual(auth.cache.ttl, DEFAULT_CACHE_EXPIRY - 1)
 
-    @mock.patch('fxa.plugins.requests.core.Client',
+    @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
     def test_memory_cache_is_used(self, client_patch):
         auth = FxABrowserIDAuth(email="test@restmail.com",
@@ -110,7 +91,7 @@ class TestFxABrowserIDAuth(unittest.TestCase):
         self.assertEquals(client_patch.return_value.login.return_value.
                           get_identity_assertion.call_count, 1)
 
-    @mock.patch('fxa.plugins.requests.core.Client',
+    @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
     def test_it_works_with_cache_deactivated(self, client_patch):
         auth = FxABrowserIDAuth(email="test@restmail.com",
@@ -128,12 +109,13 @@ class TestFxABearerTokenAuth(unittest.TestCase):
         self.auth = FxABearerTokenAuth(
             email="test@restmail.com",
             password="this is not a password",
+            client_id="53210789456",
             account_server_url="https://accounts.com/auth/v1",
             oauth_server_url="https://oauth.com/oauth/v1")
 
-    @mock.patch('fxa.plugins.requests.core.Client',
+    @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
-    @mock.patch('fxa.plugins.requests.oauth.Client',
+    @mock.patch('fxa.oauth.Client',
                 return_value=mocked_oauth_client())
     def test_header_are_set_to_request(self, oauth_client_patch,
                                        core_client_patch):
@@ -151,18 +133,18 @@ class TestFxABearerTokenAuth(unittest.TestCase):
             get_identity_assertion.assert_called_with(
                 "https://oauth.com/")
 
-    @mock.patch('fxa.plugins.requests.core.Client',
+    @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
-    @mock.patch('fxa.plugins.requests.oauth.Client',
+    @mock.patch('fxa.oauth.Client',
                 return_value=mocked_oauth_client())
     def test_memory_cache_is_set_by_default(self, oauth_client_patch,
                                             core_client_patch):
         assert type(self.auth.cache) is MemoryCache
         self.assertEqual(self.auth.cache.ttl, DEFAULT_CACHE_EXPIRY)
 
-    @mock.patch('fxa.plugins.requests.core.Client',
+    @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
-    @mock.patch('fxa.plugins.requests.oauth.Client',
+    @mock.patch('fxa.oauth.Client',
                 return_value=mocked_oauth_client())
     def test_memory_cache_is_used(self, oauth_client_patch,
                                   core_client_patch):
@@ -176,15 +158,16 @@ class TestFxABearerTokenAuth(unittest.TestCase):
         self.assertEquals(core_client_patch.call_count, 1)
         self.assertEquals(oauth_client_patch.call_count, 1)
 
-    @mock.patch('fxa.plugins.requests.core.Client',
+    @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
-    @mock.patch('fxa.plugins.requests.oauth.Client',
+    @mock.patch('fxa.oauth.Client',
                 return_value=mocked_oauth_client())
     def test_it_works_with_cache_deactivated(self, oauth_client_patch,
                                              core_client_patch):
         auth = FxABearerTokenAuth(
             email="test@restmail.com",
             password="this is not a password",
+            client_id="53210789456",
             account_server_url="https://accounts.com/auth/v1",
             oauth_server_url="https://oauth.com/oauth/v1", cache=False)
         assert not auth.cache

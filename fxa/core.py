@@ -10,6 +10,7 @@ import browserid.jwt
 import browserid.utils
 
 from fxa._utils import hexstr, APIClient, HawkTokenAuth
+from fxa.constants import PRODUCTION_URLS
 from fxa.crypto import (
     quick_stretch_password,
     generate_keypair,
@@ -18,9 +19,10 @@ from fxa.crypto import (
 )
 
 
-DEFAULT_SERVER_URL = "https://api.accounts.firefox.com/v1"
+DEFAULT_SERVER_URL = PRODUCTION_URLS['authentication']
 VERSION_SUFFIXES = ("/v1",)
 
+DEFAULT_ASSERTION_DURATION = 60
 DEFAULT_CERT_DURATION = 1000 * 60 * 30  # half an hour, in milliseconds
 
 
@@ -318,7 +320,9 @@ class Session(object):
         # XXX TODO: sanity-check the schema of the returned response
         return self.client.get_random_bytes()
 
-    def get_identity_assertion(self, audience, duration=60, exp=None,
+    def get_identity_assertion(self, audience,
+                               duration=DEFAULT_ASSERTION_DURATION,
+                               exp=None,
                                keypair=None):
         if exp is None:
             exp = int((self.apiclient.server_curtime() + duration) * 1000)

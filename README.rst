@@ -90,8 +90,69 @@ testing with live email addresses.  It works like this:
     client.destroy_account(acct.email, "MySecretPassword")
 
 
+Passing tokens and assertions to other applications
+===================================================
+
+PyFxA provides a ``fxa-client`` that you can use to export Bearer
+Tokens and Browser ID assertions.
+
+
+Get a Bearer Token for an existing account
+------------------------------------------
+
+.. code-block:: bash
+
+    fxa-client --bearer --auth you@domain.tld \
+        --account-server https://api.accounts.firefox.com/v1 \
+        --oauth-server https://oauth.accounts.firefox.com/v1
+
+    Please enter a password for you@domain.tld: 
+
+    # ---- BEARER TOKEN INFO ----
+    # User: you@domain.tld
+    # Scopes: profile
+    # Account: https://api.accounts.firefox.com/v1
+    # Oauth: https://oauth.accounts.firefox.com/v1
+    # ---------------------------
+    export OAUTH_BEARER_TOKEN="3f5106b203c...b728ef93fe29203aad44ee816a45b2f2ff57a6aed7a3"
+
+
+Create a new account Bearer Token on stage
+------------------------------------------
+
+.. code-block:: bash
+
+    fxa-client --bearer --create --prefix hello
+
+    # ---- BEARER TOKEN INFO ----
+    # User: hello-89331eba46e970dc1686ba2dc4583fc9@restmail.net
+    # Scopes: profile
+    # Account: https://api-accounts.stage.mozaws.net/v1
+    # Oauth: https://oauth.stage.mozaws.net/v1
+    # ---------------------------
+    export OAUTH_BEARER_TOKEN="ecb5285d59b28e6768fe60d76e6994877ffb16d3232c...72bdee05ea8a5"
+
+
+Create a new account BrowserID assertion on stage
+-------------------------------------------------
+
+.. code-block:: bash
+
+    fxa-client --browserid --create --audience https://token.stage.mozaws.net/ --prefix syncto
+    # ---- BROWSER ID ASSERTION INFO ----
+    # User: syncto-5bcf63598bf6026a6833035821742d3e@restmail.net
+    # Audience: https://token.stage.mozaws.net/
+    # Account: https://api-accounts.stage.mozaws.net/v1
+    # ------------------------------------
+    export FXA_BROWSERID_ASSERTION="eyJhbGciOiJSUzI1NiJ9.eyJw......VNKcPu6Uc9Y4pCuGcdM0UwaA"
+    export FXA_CLIENT_STATE="abaa31cc3b16aaf6759f2cba164a54be"
+
+
+With Requests
+=============
+
 Using Firefox Account BrowserID with Requests
-=============================================
++++++++++++++++++++++++++++++++++++++++++++++
 
 You can use the ``FxABrowserIDAuth`` to build the BrowserID assertion:
 
@@ -112,8 +173,33 @@ You can use the ``FxABrowserIDAuth`` to build the BrowserID assertion:
     user_id = resp['uid']
 
 
+Using Firefox Account Bearer Token with Requests
+++++++++++++++++++++++++++++++++++++++++++++++++
+
+You can use the ``FxABearerTokenAuth`` to build the Bearer Token:
+
+.. code-block:: python
+
+    from fxa.core import Client
+    from fxa.plugins.requests import FxABearerTokenAuth
+
+    email = acct.email
+    password = "MySecretPassword"
+
+    raw_resp = requests.get('https://profile.accounts.firefox.com/v1/profile',
+                            auth=FxABearerTokenAuth(email, password,
+                                                    ['profile'], client_id))
+
+    raw_resp.raise_for_status()
+    resp = raw_resp.json()
+    user_id = resp['uid']
+
+
+With HTTPie
+===========
+
 Using Firefox Account BrowserID with HTTPie
-===========================================
++++++++++++++++++++++++++++++++++++++++++++
 
 You can use the httpie plugin provided with PyFxA to build the BrowserID request:
 
@@ -162,7 +248,7 @@ You can use the httpie plugin provided with PyFxA to build the BrowserID request
 
 
 Using Firefox Account Bearer Tokens with HTTPie
-===============================================
++++++++++++++++++++++++++++++++++++++++++++++++
 
 You can use the httpie plugin provided with PyFxA to build the Bearer
 token request:

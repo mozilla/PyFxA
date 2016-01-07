@@ -3,9 +3,12 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import json
-import mock
 import responses
 import six
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 
 import fxa.errors
 from fxa.cache import MemoryCache
