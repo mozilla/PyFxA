@@ -54,7 +54,7 @@ class TestGetBearerToken(unittest.TestCase):
 class TestGetBrowserIDAssertion(unittest.TestCase):
     def test_account_server_url_is_mandatory(self):
         try:
-            get_bearer_token("email", "password", "audience")
+            get_browserid_assertion("email", "password", "audience")
         except ValueError as e:
             self.assertEqual("%s" % e, 'Please define an account_server_url.')
         else:
