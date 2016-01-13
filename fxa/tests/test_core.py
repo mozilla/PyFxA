@@ -1,10 +1,12 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
+import time
 
 from six import binary_type
 from six.moves.urllib.parse import urlparse
 
+from browserid import jwt
 import browserid.tests.support
 import browserid.utils
 
@@ -223,6 +225,16 @@ class TestCoreClientSession(unittest.TestCase):
         expected_issuer = urlparse(self.client.server_url).hostname
         self.assertEqual(issuer, expected_issuer)
 
+    def test_sign_certificate_handles_duration(self):
+        email = self.acct.email
+        pubkey = browserid.tests.support.get_keypair(email)[0]
+        millis = int(round(time.time() * 1000))
+        cert = self.session.sign_certificate(pubkey, duration=4000)
+        cert_exp = browserid.utils.decode_json_bytes(cert.split(".")[1])["exp"]
+        ttl = round(float(cert_exp - millis) / 1000)
+        self.assertGreaterEqual(ttl, 3)
+        self.assertLessEqual(ttl, 5)
+
     def test_change_password(self):
         # Change the password.
         newpwd = mutate_one_byte(DUMMY_PASSWORD)
@@ -244,3 +256,22 @@ class TestCoreClientSession(unittest.TestCase):
         self.assertEquals(data["issuer"], expected_issuer)
         expected_email = "{0}@{1}".format(self.session.uid, expected_issuer)
         self.assertEquals(data["email"], expected_email)
+
+    def test_get_identity_assertion_handles_duration(self):
+        millis = int(round(time.time() * 1000))
+        bid_assertion = self.session.get_identity_assertion(
+            "http://example.com", 1234)
+        cert, assertion = browserid.utils.unbundle_certs_and_assertion(
+            bid_assertion)
+        cert = jwt.parse(cert[0]).payload
+        assertion = jwt.parse(assertion).payload
+
+        # Validate cert expiry
+        ttl = round(float(cert['exp'] - millis) / 1000)
+        self.assertGreaterEqual(ttl, 1233)
+        self.assertLessEqual(ttl, 1235)
+
+        # Validate assertion expiry
+        ttl = round(float(assertion['exp'] - millis) / 1000)
+        self.assertGreaterEqual(ttl, 1233)
+        self.assertLessEqual(ttl, 1235)

@@ -336,7 +336,7 @@ class Session(object):
         # XXX TODO: cache this for future re-use?
         # For now we just get a fresh signature every time, which is
         # perfectly valid but costly if done frequently.
-        cert = self.sign_certificate(public_key)
+        cert = self.sign_certificate(public_key, duration=duration*1000)
         # Generate assertion using the private key.
         assertion = {
             "exp": exp,
