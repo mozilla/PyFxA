@@ -1,6 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
+import time
 
 from six import binary_type
 from six.moves.urllib.parse import urlparse
@@ -222,6 +223,14 @@ class TestCoreClientSession(unittest.TestCase):
         issuer = browserid.utils.decode_json_bytes(cert.split(".")[1])["iss"]
         expected_issuer = urlparse(self.client.server_url).hostname
         self.assertEqual(issuer, expected_issuer)
+
+    def test_sign_certificate_handles_duration(self):
+        email = self.acct.email
+        pubkey = browserid.tests.support.get_keypair(email)[0]
+        millis = int(round(time.time() * 1000))
+        cert = self.session.sign_certificate(pubkey, duration=4000)
+        cert_exp = browserid.utils.decode_json_bytes(cert.split(".")[1])["exp"]
+        self.assertEquals(round(float(cert_exp - millis) / 1000), 4)
 
     def test_change_password(self):
         # Change the password.
