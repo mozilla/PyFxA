@@ -11,6 +11,9 @@ from fxa import core
 def get_browserid_assertion(email, password, audience,
                             account_server_url=None,
                             duration=core.DEFAULT_ASSERTION_DURATION):
+    if not account_server_url:
+        message = 'Please define an account_server_url.'
+        raise ValueError(message)
 
     client = core.Client(server_url=account_server_url)
     session = client.login(email, password, keys=True)

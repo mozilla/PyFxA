@@ -6,6 +6,7 @@ import time
 from six import binary_type
 from six.moves.urllib.parse import urlparse
 
+from browserid import jwt
 import browserid.tests.support
 import browserid.utils
 
@@ -253,3 +254,20 @@ class TestCoreClientSession(unittest.TestCase):
         self.assertEquals(data["issuer"], expected_issuer)
         expected_email = "{0}@{1}".format(self.session.uid, expected_issuer)
         self.assertEquals(data["email"], expected_email)
+
+    def test_get_identity_assertion_handles_duration(self):
+        millis = int(round(time.time() * 1000))
+        bid_assertion = self.session.get_identity_assertion(
+            "http://example.com", 1234)
+        cert, assertion = browserid.utils.unbundle_certs_and_assertion(
+            bid_assertion)
+        cert = jwt.parse(cert[0]).payload
+        assertion = jwt.parse(assertion).payload
+
+        # Validate cert expiry
+        ttl = round(float(cert['exp'] - millis) / 1000)
+        self.assertEquals(ttl, 1234)
+
+        # Validate assertion expiry
+        ttl = round(float(assertion['exp'] - millis) / 1000)
+        self.assertEquals(ttl, 1234)
