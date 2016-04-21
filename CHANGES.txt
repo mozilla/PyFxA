@@ -12,7 +12,7 @@ This document describes changes between each past release.
 0.1.2 (2016-01-13)
 ==================
 
-- Correctly send request to tue Auth server.
+- Correctly send request to the Auth server.
 
 
 0.1.1 (2016-01-13)
