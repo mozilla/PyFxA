@@ -205,6 +205,12 @@ class APIClient(object):
         if self.timeout is not None:
             kwds.setdefault("timeout", self.timeout)
 
+        # Configure the user agent
+        headers = kwds.get('headers', {})
+        headers.setdefault('User-Agent',
+                           'Mozilla/5.0 (TV; rv:44.0) Gecko/44.0 Firefox/44.0')
+        kwds['headers'] = headers
+
         resp = self._session.request(method, url, json=json, **kwds)
 
         # Everything should return a valid JSON response.  Even errors.
