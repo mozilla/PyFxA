@@ -26,10 +26,22 @@ from six.moves.urllib.parse import urlparse, urljoin
 
 import requests
 import requests.auth
+import requests.utils
 import hawkauthlib
 
+import fxa
 import fxa.errors
 import fxa.crypto
+
+
+# Send a custom user-agent header
+# so we're easy to identify in server logs etc.
+
+USER_AGENT_HEADER = ' '.join((
+    'Mozilla/5.0 (Mobile; Firefox Accounts; rv:1.0)',
+    'PyFxA/%s' % (fxa.__version__),
+    requests.utils.default_user_agent(),
+))
 
 
 if not PY3:
@@ -207,8 +219,7 @@ class APIClient(object):
 
         # Configure the user agent
         headers = kwds.get('headers', {})
-        headers.setdefault('User-Agent',
-                           'Mozilla/5.0 (TV; rv:44.0) Gecko/44.0 Firefox/44.0')
+        headers.setdefault('User-Agent', USER_AGENT_HEADER)
         kwds['headers'] = headers
 
         resp = self._session.request(method, url, json=json, **kwds)
