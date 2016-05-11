@@ -1,8 +1,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-from fxa.tests.utils import (
-    unittest, mock, mocked_core_client, mocked_oauth_client)
+from fxa.tests.utils import unittest
+from fxa.tests.mock_utilities import (
+    mock, mocked_core_client, mocked_oauth_client)
 from fxa.tools.bearer import get_bearer_token
 from fxa.tools.browserid import get_browserid_assertion
 

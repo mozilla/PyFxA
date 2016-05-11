@@ -1,13 +1,11 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-
 import sys
 import time
 import random
 import requests
-from binascii import hexlify, unhexlify
-from os import urandom
+from binascii import unhexlify
 from six import binary_type
 from six.moves.urllib.parse import urlparse, urljoin
 
@@ -17,11 +15,6 @@ if sys.version_info >= (2, 7):
     import unittest  # NOQA
 else:
     import unittest2 as unittest  # NOQA
-
-try:
-    from unittest import mock  # NOQA
-except ImportError:
-    import mock  # NOQA
 
 
 DUMMY_EMAIL = "PyFxATester@restmail.net"
@@ -110,19 +103,3 @@ class TestEmailAccount(object):
                 return m
             if start_time + timeout < time.time():
                 return None
-
-
-def mocked_core_client():
-    client = mock.MagicMock()
-    session = mock.MagicMock()
-    session.get_identity_assertion.return_value = 'abcd'
-    session.fetch_keys.return_value = ('keyA'.encode('utf-8'),
-                                       'keyB'.encode('utf-8'))
-    client.login.return_value = session
-    return client
-
-
-def mocked_oauth_client():
-    client = mock.MagicMock()
-    client.authorize_token.return_value = hexlify(urandom(32))
-    return client
