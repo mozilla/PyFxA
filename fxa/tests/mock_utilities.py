@@ -1,10 +1,6 @@
+import mock
 from binascii import hexlify
 from os import urandom
-
-try:
-    from unittest import mock  # NOQA
-except ImportError:
-    import mock  # NOQA
 
 
 def mocked_core_client():
