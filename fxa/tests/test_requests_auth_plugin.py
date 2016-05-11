@@ -1,7 +1,7 @@
 from fxa.cache import MemoryCache
 from fxa.plugins.requests import (
     FxABrowserIDAuth, FxABearerTokenAuth, get_cache_key, DEFAULT_CACHE_EXPIRY)
-from fxa.tests.utils import (
+from fxa.tests.mock_utilities import (
     unittest, mock, mocked_core_client, mocked_oauth_client)
 
 
