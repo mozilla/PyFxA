@@ -213,6 +213,13 @@ class Client(object):
         auth = HawkTokenAuth(token, "passwordForgotToken", self.apiclient)
         return self.apiclient.get(url, auth=auth)
 
+    def verify_email_code(self, uid, code):
+        body = {
+            "uid": uid,
+            "code": code,
+        }
+        url = "/recovery_email/verify_code"
+        return self.apiclient.post(url, body)
 
 class Session(object):
 
