@@ -285,7 +285,7 @@ class Session(object):
         return resp
 
     def verify_email_code(self, code):
-        return self.client.verify_email_code(self.uid, code) # note: not authenticated
+        return self.client.verify_email_code(self.uid, code)  # note: not authenticated
 
     def resend_email_code(self, **kwds):
         body = {}
