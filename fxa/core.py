@@ -285,12 +285,7 @@ class Session(object):
         return resp
 
     def verify_email_code(self, code):
-        body = {
-            "uid": self.uid,
-            "code": code,
-        }
-        url = "/recovery_email/verify_code"
-        self.apiclient.post(url, body)  # note: not authenticated
+        return self.client.verify_email_code(self.uid, code) # note: not authenticated
 
     def resend_email_code(self, **kwds):
         body = {}
