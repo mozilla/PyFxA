@@ -367,14 +367,17 @@ class BearerTokenAuth(requests.auth.AuthBase):
         return req
 
 
-def _encoded(value, encoding='utf-8'):
-    """Make sure the value is of type ``str`` in both PY2 and PY3."""
+def _decoded(value, encoding='utf-8'):
+    """Make sure the value is of type ``unicode`` in both PY2 and PY3."""
     value_type = type(value)
-    if value_type != str:
-        # Test for Python3
-        if value_type == six.binary_type:  # pragma: no cover
-            value = value.decode(encoding)
-        # Test for Python2
-        elif value_type == six.text_type:  # pragma: no cover
-            value = value.encode(encoding)
+    if value_type != six.text_type:
+        value = value.decode(encoding)
+    return value
+
+
+def _encoded(value, encoding='utf-8'):
+    """Make sure the value is of type ``bytes`` in both PY2 and PY3."""
+    value_type = type(value)
+    if value_type != six.binary_type:
+        return value.encode(encoding)
     return value
