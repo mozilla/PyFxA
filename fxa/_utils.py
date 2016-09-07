@@ -14,6 +14,7 @@ import os
 import time
 import hashlib
 import hmac
+import six
 from binascii import hexlify, unhexlify
 from base64 import b64encode
 try:
@@ -328,9 +329,10 @@ class HawkTokenAuth(requests.auth.AuthBase):
         req.headers["Host"] = urlparse(req.url).netloc
         params = {}
         if req.body:
+            body = _encoded(req.body, 'utf-8')
             hasher = hashlib.sha256()
             hasher.update(b"hawk.1.payload\napplication/json\n")
-            hasher.update(req.body.encode("utf8"))
+            hasher.update(body)
             hasher.update(b"\n")
             hash = b64encode(hasher.digest())
             if PY3:
@@ -363,3 +365,16 @@ class BearerTokenAuth(requests.auth.AuthBase):
     def __call__(self, req):
         req.headers["Authorization"] = "Bearer {0}".format(self.token)
         return req
+
+
+def _encoded(value, encoding='utf-8'):
+    """Make sure the value is of type ``str`` in both PY2 and PY3."""
+    value_type = type(value)
+    if value_type != str:
+        # Test for Python3
+        if value_type == six.binary_type:  # pragma: no cover
+            value = value.decode(encoding)
+        # Test for Python2
+        elif value_type == six.text_type:  # pragma: no cover
+            value = value.encode(encoding)
+    return value
