@@ -221,6 +221,7 @@ class Client(object):
         url = "/recovery_email/verify_code"
         return self.apiclient.post(url, body)
 
+
 class Session(object):
 
     def __init__(self, client, email, stretchpwd, uid, token,

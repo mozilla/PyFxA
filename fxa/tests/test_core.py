@@ -164,12 +164,18 @@ class TestCoreClient(unittest.TestCase):
             email=self.acct.email,
             stretchpwd=DUMMY_STRETCHED_PASSWORD,
         )
-        m = self.acct.wait_for_email(lambda m: "x-uid" in m["headers"] and "x-verify-code" in m["headers"])
+
+        def wait_for_email(m):
+            return "x-uid" in m["headers"] and "x-verify-code" in m["headers"]
+
+        m = self.acct.wait_for_email(wait_for_email)
         if not m:
             raise RuntimeError("Verification email was not received")
         # If everything went well, verify_email_code should return an empty json object
-        response = self.client.verify_email_code(m["headers"]["x-uid"], m["headers"]["x-verify-code"])
+        response = self.client.verify_email_code(m["headers"]["x-uid"],
+                                                 m["headers"]["x-verify-code"])
         self.assertEquals(response, {})
+
 
 class TestCoreClientSession(unittest.TestCase):
 
