@@ -13,7 +13,7 @@ except ImportError:
 import fxa.errors
 from fxa.cache import MemoryCache
 from fxa.oauth import Client, scope_matches
-
+from fxa._utils import _decoded
 from fxa.tests.utils import unittest
 
 from six.moves.urllib.parse import urlparse, parse_qs
@@ -62,7 +62,7 @@ class TestClientTradeCode(unittest.TestCase):
                          'https://server/v1/token')
 
     def test_posts_code_to_server(self):
-        body = json.loads(self.response.request.body)
+        body = json.loads(_decoded(self.response.request.body))
         expected = {
             "client_secret": "cake",
             "code": "1234",
@@ -125,7 +125,7 @@ class TestAuthClientVerifyCode(unittest.TestCase):
                          'https://server/v1/verify')
 
     def test_posts_token_to_server(self):
-        body = json.loads(self.response.request.body)
+        body = json.loads(_decoded(self.response.request.body))
         expected = {
             "token": "abc",
         }
@@ -226,7 +226,7 @@ class TestAuthClientAuthorizeCode(unittest.TestCase):
         assertion = "A_FAKE_ASSERTION"
         code = self.client.authorize_code(assertion)
         self.assertEquals(code, "qed")
-        req_body = json.loads(responses.calls[0].request.body)
+        req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEquals(req_body, {
             "assertion": assertion,
             "client_id": self.client.client_id,
@@ -238,7 +238,7 @@ class TestAuthClientAuthorizeCode(unittest.TestCase):
         assertion = "A_FAKE_ASSERTION"
         code = self.client.authorize_code(assertion, scope="profile:email")
         self.assertEquals(code, "qed")
-        req_body = json.loads(responses.calls[0].request.body)
+        req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEquals(req_body, {
             "assertion": assertion,
             "client_id": self.client.client_id,
@@ -251,7 +251,7 @@ class TestAuthClientAuthorizeCode(unittest.TestCase):
         assertion = "A_FAKE_ASSERTION"
         code = self.client.authorize_code(assertion, client_id="cba")
         self.assertEquals(code, "qed")
-        req_body = json.loads(responses.calls[0].request.body)
+        req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEquals(req_body, {
             "assertion": assertion,
             "client_id": "cba",
@@ -275,7 +275,7 @@ class TestAuthClientAuthorizeToken(unittest.TestCase):
         assertion = "A_FAKE_ASSERTION"
         token = self.client.authorize_token(assertion)
         self.assertEquals(token, "izatoken")
-        req_body = json.loads(responses.calls[0].request.body)
+        req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEquals(req_body, {
             "assertion": assertion,
             "client_id": self.client.client_id,
@@ -288,7 +288,7 @@ class TestAuthClientAuthorizeToken(unittest.TestCase):
         assertion = "A_FAKE_ASSERTION"
         token = self.client.authorize_token(assertion, scope="storage")
         self.assertEquals(token, "izatoken")
-        req_body = json.loads(responses.calls[0].request.body)
+        req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEquals(req_body, {
             "assertion": assertion,
             "client_id": self.client.client_id,
@@ -302,7 +302,7 @@ class TestAuthClientAuthorizeToken(unittest.TestCase):
         assertion = "A_FAKE_ASSERTION"
         token = self.client.authorize_token(assertion, client_id="cba")
         self.assertEquals(token, "izatoken")
-        req_body = json.loads(responses.calls[0].request.body)
+        req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEquals(req_body, {
             "assertion": assertion,
             "client_id": "cba",
