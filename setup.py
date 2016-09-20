@@ -4,8 +4,6 @@ import os
 import sys
 from setuptools import setup, find_packages
 
-import fxa
-
 PY2 = sys.version_info[0] == 2
 
 # Read package meta-data from the containing directory.
@@ -50,7 +48,7 @@ if sys.version_info < (2, 7, 9):
 
 
 setup(name="PyFxA",
-      version=fxa.__version__,
+      version='0.4.0.dev0',
       description="Firefox Accounts client library for Python",
       long_description=README + "\n\n" + CHANGES,
       classifiers=[
