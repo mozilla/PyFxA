@@ -6,8 +6,9 @@
 Python library for interacting with the Firefox Accounts ecosystem.
 
 """
+import pkg_resources
 
-__version__ = '0.4.0.dev0'
+__version__ = pkg_resources.get_distribution("PyFxA").version
 __ver_tuple__ = tuple(__version__.split('.'))
 
 
