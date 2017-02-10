@@ -5,6 +5,7 @@
 from binascii import unhexlify
 
 from six import string_types
+from six.moves.urllib.parse import quote as urlquote
 
 import browserid.jwt
 import browserid.utils
@@ -299,12 +300,15 @@ class Session(object):
         url = "/recovery_email/resend_code"
         self.apiclient.post(url, body, auth=self._auth)
 
-    def sign_certificate(self, public_key, duration=DEFAULT_CERT_DURATION):
+    def sign_certificate(self, public_key, duration=DEFAULT_CERT_DURATION,
+                         service=None):
         body = {
             "publicKey": public_key,
             "duration": duration,
         }
         url = "/certificate/sign"
+        if service is not None:
+            url += "?service=" + urlquote(service)
         resp = self.apiclient.post(url, body, auth=self._auth)
         return resp["cert"]
 
@@ -326,7 +330,8 @@ class Session(object):
     def get_identity_assertion(self, audience,
                                duration=DEFAULT_ASSERTION_DURATION,
                                exp=None,
-                               keypair=None):
+                               keypair=None,
+                               **kwds):
         if exp is None:
             exp = int((self.apiclient.server_curtime() + duration) * 1000)
         if keypair is None:
@@ -339,7 +344,7 @@ class Session(object):
         # XXX TODO: cache this for future re-use?
         # For now we just get a fresh signature every time, which is
         # perfectly valid but costly if done frequently.
-        cert = self.sign_certificate(public_key, duration=duration*1000)
+        cert = self.sign_certificate(public_key, duration * 1000, **kwds)
         # Generate assertion using the private key.
         assertion = {
             "exp": exp,

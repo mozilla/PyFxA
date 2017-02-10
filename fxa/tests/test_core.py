@@ -295,3 +295,11 @@ class TestCoreClientSession(unittest.TestCase):
         ttl = round(float(assertion['exp'] - millis) / 1000)
         self.assertGreaterEqual(ttl, 1232)
         self.assertLessEqual(ttl, 1236)
+
+    def test_get_identity_assertion_accepts_service(self):
+        # We can't observe any side-effects of sending the service query param,
+        # but we can test that it doesn't error out.
+        assertion = self.session.get_identity_assertion("http://example.com",
+                                                        service="test-me")
+        data = browserid.verify(assertion, audience="http://example.com")
+        self.assertEquals(data["status"], "okay")

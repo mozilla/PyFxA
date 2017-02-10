@@ -42,6 +42,16 @@ class Client(object):
     def server_url(self):
         return self.apiclient.server_url
 
+    def _get_identity_assertion(self, sessionOrAssertion, client_id=None):
+        if isinstance(sessionOrAssertion, string_types):
+            return sessionOrAssertion
+        if client_id is None:
+            client_id = self.client_id
+        return sessionOrAssertion.get_identity_assertion(
+            audience=self.server_url,
+            service=client_id
+        )
+
     def get_redirect_url(self, state="", redirect_uri=None, scope=None,
                          action=None, email=None, client_id=None):
         """Get the URL to redirect to to initiate the oauth flow."""
@@ -89,7 +99,7 @@ class Client(object):
 
         return resp['access_token']
 
-    def authorize_code(self, assertion, scope=None, client_id=None):
+    def authorize_code(self, sessionOrAssertion, scope=None, client_id=None):
         """Trade an identity assertion for an oauth authorization code.
 
         This method takes an identity assertion for a user and uses it to
@@ -100,12 +110,14 @@ class Client(object):
         the intermediate step of using a short-lived code, and hence this
         method is likely only useful for testing purposes.
 
-        :param assertion: an identity assertion for the target user.
+        :param sessionOrAssertion: an identity assertion for the target user,
+                                   or an auth session to use to make one.
         :param scope: optional scope to be provided by the token.
         :param client_id: the string generated during FxA client registration.
         """
         if client_id is None:
             client_id = self.client_id
+        assertion = self._get_identity_assertion(sessionOrAssertion, client_id)
         url = "/authorization"
         body = {
             "client_id": client_id,
@@ -129,19 +141,21 @@ class Client(object):
             error_msg = "code missing in OAuth redirect url"
             raise OutOfProtocolError(error_msg)
 
-    def authorize_token(self, assertion, scope=None, client_id=None):
+    def authorize_token(self, sessionOrAssertion, scope=None, client_id=None):
         """Trade an identity assertion for an oauth token.
 
         This method takes an identity assertion for a user and uses it to
         generate an oauth token. The client_id must have implicit grant
         privileges.
 
-        :param assertion: an identity assertion for the target user.
+        :param sessionOrAssertion: an identity assertion for the target user,
+                                   or an auth session to use to make one.
         :param scope: optional scope to be provided by the token.
         :param client_id: the string generated during FxA client registration.
         """
         if client_id is None:
             client_id = self.client_id
+        assertion = self._get_identity_assertion(sessionOrAssertion, client_id)
         url = "/authorization"
         body = {
             "client_id": client_id,
