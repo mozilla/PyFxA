@@ -88,13 +88,13 @@ class TestEmailAccount(object):
         resp.raise_for_status()
         self.messages[:] = []
 
-    def find_email(self, callback=lambda: True):
+    def find_email(self, callback=lambda m: True):
         for m in self.messages:
             if callback(m):
                 return m
         return None
 
-    def wait_for_email(self, callback=lambda: True, timeout=30):
+    def wait_for_email(self, callback=lambda m: True, timeout=30):
         start_time = time.time()
         while True:
             self.fetch()
