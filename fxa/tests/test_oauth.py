@@ -258,6 +258,23 @@ class TestAuthClientAuthorizeCode(unittest.TestCase):
             "state": "x",
         })
 
+    @responses.activate
+    def test_authorize_code_with_session_object(self):
+        session = mock.Mock()
+        session.get_identity_assertion.return_value = "IDENTITY"
+        code = self.client.authorize_code(session)
+        session.get_identity_assertion.assert_called_once_with(
+            audience=TEST_SERVER_URL,
+            service=self.client.client_id
+        )
+        self.assertEquals(code, "qed")
+        req_body = json.loads(_decoded(responses.calls[0].request.body))
+        self.assertEquals(req_body, {
+            "assertion": "IDENTITY",
+            "client_id": self.client.client_id,
+            "state": "x",
+        })
+
 
 class TestAuthClientAuthorizeToken(unittest.TestCase):
 
@@ -306,6 +323,24 @@ class TestAuthClientAuthorizeToken(unittest.TestCase):
         self.assertEquals(req_body, {
             "assertion": assertion,
             "client_id": "cba",
+            "state": "x",
+            "response_type": "token",
+        })
+
+    @responses.activate
+    def test_authorize_token_with_session_object(self):
+        session = mock.Mock()
+        session.get_identity_assertion.return_value = "IDENTITY"
+        token = self.client.authorize_token(session)
+        session.get_identity_assertion.assert_called_once_with(
+            audience=TEST_SERVER_URL,
+            service=self.client.client_id
+        )
+        self.assertEquals(token, "izatoken")
+        req_body = json.loads(_decoded(responses.calls[0].request.body))
+        self.assertEquals(req_body, {
+            "assertion": "IDENTITY",
+            "client_id": self.client.client_id,
             "state": "x",
             "response_type": "token",
         })
