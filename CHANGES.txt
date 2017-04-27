@@ -7,6 +7,8 @@ This document describes changes between each past release.
 ==================
 
 - Use `pkg_resources` to handle package version. (#45)
+- Add a shortcut for authorizing oauth codes directly from a core.Session,
+  rater than requiring the caller to explicitly create an assertion.
 
 
 0.3.0 (2016-09-07)
