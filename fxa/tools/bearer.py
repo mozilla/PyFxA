@@ -10,7 +10,8 @@ from fxa import oauth
 def get_bearer_token(email, password, scopes=None,
                      account_server_url=None,
                      oauth_server_url=None,
-                     client_id=None):
+                     client_id=None,
+                     unblock_code=None):
 
     message = None
 
@@ -30,7 +31,7 @@ def get_bearer_token(email, password, scopes=None,
         scopes = ['profile']
 
     client = core.Client(server_url=account_server_url)
-    session = client.login(email, password)
+    session = client.login(email, password, unblock_code=unblock_code)
 
     url = urlparse(oauth_server_url)
     audience = "%s://%s/" % (url.scheme, url.netloc)
