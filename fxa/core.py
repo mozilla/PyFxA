@@ -354,6 +354,61 @@ class Session(object):
         # Bundle them into a full BrowserID assertion.
         return browserid.utils.bundle_certs_and_assertion([cert], assertion)
 
+    def get_sessions_list(self):
+        url = "/account/sessions"
+        resp = self.apiclient.get(url, auth=self._auth)
+        return resp
+
+    def get_devices_list(self):
+        url = "/account/devices"
+        resp = self.apiclient.get(url, auth=self._auth)
+        return resp
+
+    def create_device_record(self, **kwds):
+        body = {}
+        ALLOWED_ARGS = set((
+            "name", "type", "pushCallback", "pushPublicKey", "pushAuthKey"
+        ))
+        for arg in kwds:
+            if arg in ALLOWED_ARGS:
+                body[arg] = kwds[extra]
+            else:
+                msg = "Unexpected keyword argument: {0}".format(arg)
+                raise TypeError(msg)
+        url = "/account/device"
+        return self.apiclient.post(url, body, auth=self._auth)
+
+    def update_device_record(self, id, **kwds):
+        body = {"id": id}
+        ALLOWED_ARGS = set((
+            "name", "type", "pushCallback", "pushPublicKey", "pushAuthKey"
+        ))
+        for arg in kwds:
+            if arg in ALLOWED_ARGS:
+                body[arg] = kwds[extra]
+            else:
+                msg = "Unexpected keyword argument: {0}".format(arg)
+                raise TypeError(msg)
+        url = "/account/device"
+        return self.apiclient.post(url, body, auth=self._auth)
+
+    def destroy_device_record(self, id):
+        url = "/account/device"
+        body = {"id": id}
+        self.apiclient.post(url, body, auth=self._auth)
+
+    def send_device_notification(self, to, payload, excluded=None, ttl=None):
+        body = {
+            "to":  to,
+            "payload":  payload,
+        }
+        if excluded is not None:
+            body["excluded"] = excluded
+        if ttl is not None:
+            body["TTL"] = ttl
+        url = "/account/devices/notify"
+        self.apiclient.post(url, body, auth=self._auth)
+
 
 class PasswordForgotToken(object):
 
