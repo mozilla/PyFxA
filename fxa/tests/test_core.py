@@ -270,7 +270,7 @@ class TestCoreClientSession(unittest.TestCase):
 
     def test_get_identity_assertion(self):
         assertion = self.session.get_identity_assertion("http://example.com")
-        data = browserid.verify(assertion, audience="http://example.com")
+        data = browserid.LocalVerifier().verify(assertion, audience="http://example.com")
         self.assertEquals(data["status"], "okay")
         expected_issuer = urlparse(self.session.server_url).hostname
         self.assertEquals(data["issuer"], expected_issuer)
@@ -301,5 +301,5 @@ class TestCoreClientSession(unittest.TestCase):
         # but we can test that it doesn't error out.
         assertion = self.session.get_identity_assertion("http://example.com",
                                                         service="test-me")
-        data = browserid.verify(assertion, audience="http://example.com")
+        data = browserid.LocalVerifier().verify(assertion, audience="http://example.com")
         self.assertEquals(data["status"], "okay")
