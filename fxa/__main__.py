@@ -36,7 +36,7 @@ def main(args=None):
                         dest='browserid',
                         action='store_true')
 
-    parser.add_argument('--create-user', '-c',
+    parser.add_argument('-c', '--create-user',
                         help='Create a new user',
                         dest='create',
                         action='store_true')
