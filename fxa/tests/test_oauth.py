@@ -54,8 +54,11 @@ class TestClientTradeCode(unittest.TestCase):
                       body=body,
                       content_type='application/json')
 
-        self.token = self.client.trade_code('1234')
+        self.tokens = self.client.trade_code('1234')
         self.response = responses.calls[0]
+
+    def _get_request_body(self):
+        return json.loads(_decoded(responses.calls[0].request.body))
 
     def test_reaches_server_on_token_url(self):
         self.assertEqual(self.response.request.url,
@@ -71,7 +74,7 @@ class TestClientTradeCode(unittest.TestCase):
         self.assertEqual(body, expected)
 
     def test_returns_access_token_given_by_server(self):
-        self.assertEqual(self.token, "yeah")
+        self.assertEqual(self.tokens["access_token"], "yeah")
 
     @responses.activate
     def test_raises_error_if_access_token_not_returned(self):
@@ -92,15 +95,43 @@ class TestClientTradeCode(unittest.TestCase):
                       body='{"access_token": "tokay"}',
                       content_type='application/json')
         # As positional arguments.
-        token = self.client.trade_code('1234', 'abc', 'cake')
-        self.assertEqual(token, "tokay")
+        tokens = self.client.trade_code('1234', 'abc', 'cake2')
+        self.assertEqual(tokens, {"access_token": "tokay"})
+        self.assertEqual(self._get_request_body(), {
+          'client_id': 'abc',
+          'client_secret': 'cake2',
+          'code': '1234',
+        })
         # As keyword arguments.
-        token = self.client.trade_code(
+        tokens = self.client.trade_code(
             code='1234',
             client_id='abc',
-            client_secret='cake'
+            client_secret='cake2'
         )
-        self.assertEqual(token, "tokay")
+        self.assertEqual(tokens, {"access_token": "tokay"})
+        self.assertEqual(self._get_request_body(), {
+          'client_id': 'abc',
+          'client_secret': 'cake2',
+          'code': '1234',
+        })
+
+    @responses.activate
+    def test_trade_token_can_take_pkce_verifier_as_argument(self):
+        responses.add(responses.POST,
+                      'https://server/v1/token',
+                      body='{"access_token": "tokay"}',
+                      content_type='application/json')
+        tokens = self.client.trade_code(
+            code='1234',
+            code_verifier='verifyme',
+        )
+        self.assertEqual(tokens, {"access_token": "tokay"})
+        self.assertEqual(self._get_request_body(), {
+          'client_id': 'abc',
+          'client_secret': 'cake',
+          'code': '1234',
+          'code_verifier': 'verifyme',
+        })
 
 
 class TestAuthClientVerifyCode(unittest.TestCase):
@@ -194,12 +225,17 @@ class TestOAuthClientRedirectURL(unittest.TestCase):
             scope="profile profile:email",
             action="signup",
             email="test@example.com",
+            code_challenge="challenge",
+            code_challenge_method="S1234",
+            access_type="offline",
+            keys_jwk="MockJWK",
         ))
         server_url = urlparse(self.server_url)
         self.assertEqual(redirect_url.hostname, server_url.hostname)
         params = parse_qs(redirect_url.query, keep_blank_values=True)
         all_params = ["action", "email", "client_id", "redirect_uri",
-                      "scope", "state"]
+                      "scope", "state", "access_type", "code_challenge",
+                      "code_challenge_method", "keys_jwk"]
         self.assertEqual(sorted(params.keys()), sorted(all_params))
         self.assertEqual(params["client_id"][0], self.client.client_id)
         self.assertEqual(params["state"][0], "applicationstate")
@@ -207,6 +243,10 @@ class TestOAuthClientRedirectURL(unittest.TestCase):
         self.assertEqual(params["scope"][0], "profile profile:email")
         self.assertEqual(params["action"][0], "signup")
         self.assertEqual(params["email"][0], "test@example.com")
+        self.assertEqual(params["code_challenge"][0], "challenge")
+        self.assertEqual(params["code_challenge_method"][0], "S1234")
+        self.assertEqual(params["access_type"][0], "offline")
+        self.assertEqual(params["keys_jwk"][0], "MockJWK")
 
 
 class TestAuthClientAuthorizeCode(unittest.TestCase):
@@ -256,6 +296,25 @@ class TestAuthClientAuthorizeCode(unittest.TestCase):
             "assertion": assertion,
             "client_id": "cba",
             "state": "x",
+        })
+
+    @responses.activate
+    def test_authorize_code_with_pkce_challenge(self):
+        assertion = "A_FAKE_ASSERTION"
+        challenge, verifier = self.client.generate_pkce_challenge()
+        self.assertEqual(sorted(challenge),
+                         ["code_challenge", "code_challenge_method"])
+        self.assertEqual(sorted(verifier),
+                         ["code_verifier"])
+        code = self.client.authorize_code(assertion, **challenge)
+        self.assertEquals(code, "qed")
+        req_body = json.loads(_decoded(responses.calls[0].request.body))
+        self.assertEquals(req_body, {
+            "assertion": assertion,
+            "client_id": self.client.client_id,
+            "state": "x",
+            "code_challenge": challenge["code_challenge"],
+            "code_challenge_method": challenge["code_challenge_method"],
         })
 
     @responses.activate

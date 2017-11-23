@@ -90,6 +90,16 @@ def main(args=None):
                         required=False,
                         default=DEFAULT_CLIENT_ID)
 
+    parser.add_argument('--client-secret',
+                        help='Firefox Account OAuth client secret.',
+                        dest='client_secret',
+                        required=False)
+
+    parser.add_argument('--use-pkce',
+                        help='Whether to use PKCE in OAuth code grant flow.',
+                        dest='use_pkce',
+                        action='store_true')
+
     parser.add_argument('--scopes',
                         help='Firefox Account OAuth scopes.',
                         dest='scopes',
@@ -189,13 +199,18 @@ def main(args=None):
                   if s.strip()]
         client_id = args['client_id']
         unblock_code = args['unblock_code']
+        client_secret = args['client_secret']
+        use_pkce = args['use_pkce']
 
         logger.info('Generating the Bearer Token.')
 
         try:
             token = get_bearer_token(email, password, scopes,
                                      account_server_url,
-                                     oauth_server_url, client_id,
+                                     oauth_server_url,
+                                     client_id,
+                                     client_secret,
+                                     use_pkce,
                                      unblock_code)
         except ClientError as e:
             logger.error(e)

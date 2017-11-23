@@ -127,13 +127,18 @@ class TestFxABearerTokenAuth(unittest.TestCase):
                         "Authorization headers does not start with Bearer")
 
         core_client_patch.assert_called_with(
-            server_url="https://accounts.com/auth/v1")
+            server_url="https://accounts.com/auth/v1"
+        )
         oauth_client_patch.assert_called_with(
-            server_url="https://oauth.com/oauth/v1")
+            "53210789456",
+            None,
+            server_url="https://oauth.com/oauth/v1"
+        )
 
-        core_client_patch.return_value.login.return_value. \
-            get_identity_assertion.assert_called_with(
-                "https://oauth.com/")
+        oauth_client_patch.return_value.authorize_token.assert_called_with(
+            core_client_patch.return_value.login.return_value,
+            "profile"
+        )
 
     @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())

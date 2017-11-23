@@ -278,7 +278,7 @@ class TestCoreClientSession(unittest.TestCase):
         cert_exp = browserid.utils.decode_json_bytes(cert.split(".")[1])["exp"]
         ttl = round(float(cert_exp - millis) / 1000)
         self.assertGreaterEqual(ttl, 2)
-        self.assertLessEqual(ttl, 6)
+        self.assertLessEqual(ttl, 30)
 
     def test_change_password(self):
         # Change the password.
@@ -313,13 +313,13 @@ class TestCoreClientSession(unittest.TestCase):
 
         # Validate cert expiry
         ttl = round(float(cert['exp'] - millis) / 1000)
-        self.assertGreaterEqual(ttl, 1232)
-        self.assertLessEqual(ttl, 1236)
+        self.assertGreaterEqual(ttl, 1230)
+        self.assertLessEqual(ttl, 1260)
 
         # Validate assertion expiry
         ttl = round(float(assertion['exp'] - millis) / 1000)
-        self.assertGreaterEqual(ttl, 1232)
-        self.assertLessEqual(ttl, 1236)
+        self.assertGreaterEqual(ttl, 1230)
+        self.assertLessEqual(ttl, 1260)
 
     def test_get_identity_assertion_accepts_service(self):
         # We can't observe any side-effects of sending the service query param,
