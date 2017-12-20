@@ -12,6 +12,7 @@ from fxa.errors import ClientError
 from fxa.tools.create_user import create_new_fxa_account
 from fxa.tools.bearer import get_bearer_token
 from fxa.tools.browserid import get_browserid_assertion
+from fxa.tools.unblock import send_unblock_code
 
 DEFAULT_CLIENT_ID = "5882386c6d801776"  # Firefox dev Client ID
 DEFAULT_ENV = 'stage'
@@ -35,6 +36,10 @@ def main(args=None):
                         help='Generate a BrowserID assertion',
                         dest='browserid',
                         action='store_true')
+    parser.add_argument('--unblock-account',
+                        help='Generate an unblock code for the specified email',
+                        dest='unblock_account',
+                        metavar='EMAIL')
 
     parser.add_argument('-c', '--create-user',
                         help='Create a new user',
@@ -108,6 +113,12 @@ def main(args=None):
                         required=False,
                         default='fxa')
 
+    parser.add_argument('--unblock-code',
+                        help='Use this unblock code when logging in.',
+                        metavar='CODE',
+                        dest='unblock_code',
+                        required=False)
+
     args = vars(parser.parse_args())
     create = args['create']
     auth = args.get('auth')
@@ -139,7 +150,19 @@ def main(args=None):
         fd = open(out, 'w')
         fd_is_to_close = True
 
-    if auth:
+    if args['unblock_account']:
+        # Trigger sending an unblock code
+        email = args['unblock']
+
+        try:
+            send_unblock_code(email, account_server_url)
+        except (ClientError, ValueError) as e:
+            logger.error(e)
+            sys.exit(1)
+
+        logger.info('Unblock code sent')
+        sys.exit(0)
+    elif auth:
         # Ask for the user password if needed
         auth = auth.split(':', 1)
         if len(auth) < 2:
@@ -165,13 +188,15 @@ def main(args=None):
         scopes = [s.strip() for s in re.split(';|,|\t|\n', args['scopes'])
                   if s.strip()]
         client_id = args['client_id']
+        unblock_code = args['unblock_code']
 
         logger.info('Generating the Bearer Token.')
 
         try:
             token = get_bearer_token(email, password, scopes,
                                      account_server_url,
-                                     oauth_server_url, client_id)
+                                     oauth_server_url, client_id,
+                                     unblock_code)
         except ClientError as e:
             logger.error(e)
             sys.exit(1)
@@ -196,7 +221,8 @@ def main(args=None):
 
         try:
             bid_assertion, client_state = get_browserid_assertion(
-                email, password, audience, account_server_url, duration)
+                email, password, audience, account_server_url, duration,
+                unblock_code)
         except ClientError as e:
             logger.error(e)
             sys.exit(1)

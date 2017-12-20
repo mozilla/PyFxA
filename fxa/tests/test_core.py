@@ -176,6 +176,31 @@ class TestCoreClient(unittest.TestCase):
                                                  m["headers"]["x-verify-code"])
         self.assertEquals(response, {})
 
+    def test_send_unblock_code(self):
+        acct = TestEmailAccount(email="blockUnblockCode@restmail.net")
+        self.client.create_account(
+            email=acct.email,
+            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+        )
+        self._accounts_to_delete.append(acct)
+
+        # Initiate sending unblock code
+        response = self.client.send_unblock_code(acct.email)
+        self.assertEquals(response, {})
+
+        m = acct.wait_for_email(lambda m: "x-unblock-code" in m["headers"])
+        if not m:
+            raise RuntimeError("Unblock code email was not received")
+
+        code = m["headers"]["x-unblock-code"]
+        self.assertTrue(len(code) > 0)
+
+        self.client.login(
+            email=acct.email,
+            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+            unblock_code=code
+        )
+
 
 class TestCoreClientSession(unittest.TestCase):
 

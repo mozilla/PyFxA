@@ -50,7 +50,8 @@ class TestFxABrowserIDAuth(unittest.TestCase):
         client_patch.return_value.login.assert_called_with(
             "test@restmail.com",
             "this is not a password",
-            keys=True)
+            keys=True,
+            unblock_code=None)
 
         client_patch.return_value.login.return_value. \
             get_identity_assertion.assert_called_with(

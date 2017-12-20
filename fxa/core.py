@@ -74,7 +74,7 @@ class Client(object):
             auth_timestamp=resp["authAt"],
         )
 
-    def login(self, email, password=None, stretchpwd=None, keys=False):
+    def login(self, email, password=None, stretchpwd=None, keys=False, unblock_code=None):
         stretchpwd = self._get_stretched_password(email, password, stretchpwd)
         body = {
             "email": email,
@@ -83,6 +83,10 @@ class Client(object):
         url = "/account/login"
         if keys:
             url += "?keys=true"
+
+        if unblock_code:
+            body["unblockCode"] = unblock_code
+
         resp = self.apiclient.post(url, body)
         # XXX TODO: somehow sanity-check the schema on this endpoint
         return Session(
@@ -220,6 +224,23 @@ class Client(object):
             "code": code,
         }
         url = "/recovery_email/verify_code"
+        return self.apiclient.post(url, body)
+
+    def send_unblock_code(self, email, **kwds):
+        body = {
+            "email": email
+        }
+
+        url = "/account/login/send_unblock_code"
+        return self.apiclient.post(url, body)
+
+    def reject_unblock_code(self, uid, unblockCode):
+        body = {
+            "uid": uid,
+            "unblockCode": unblockCode
+        }
+
+        url = "/account/login/reject_unblock_code"
         return self.apiclient.post(url, body)
 
 
