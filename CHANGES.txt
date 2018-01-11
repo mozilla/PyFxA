@@ -3,7 +3,14 @@ CHANGELOG
 
 This document describes changes between each past release.
 
-0.4.0 (unreleased)
+0.5.0 (2018-01-12)
+==================
+
+- Add ability to login with unblock codes.
+- Tell testrunners to ignore some test helper utilities.
+
+
+0.4.0 (2017-??-??)
 ==================
 
 - Use `pkg_resources` to handle package version. (#45)
