@@ -177,7 +177,7 @@ class TestCoreClient(unittest.TestCase):
         self.assertEquals(response, {})
 
     def test_send_unblock_code(self):
-        acct = TestEmailAccount(email="blockUnblockCode@restmail.net")
+        acct = TestEmailAccount(email="block-{uniq}@{hostname}")
         self.client.create_account(
             email=acct.email,
             stretchpwd=DUMMY_STRETCHED_PASSWORD,
