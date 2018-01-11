@@ -61,6 +61,8 @@ class TestEmailAccount(object):
     you want these to be filled in automatically.
     """
 
+    __test__ = False  # Prevent testrunners from collecting this class.
+
     DEFAULT_SERVER_URL = "http://restmail.net"
 
     def __init__(self, email=None, server_url=None):
