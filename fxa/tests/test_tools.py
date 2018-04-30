@@ -49,7 +49,9 @@ class TestGetBearerToken(unittest.TestCase):
                          account_server_url="account_server_url",
                          oauth_server_url="oauth_server_url")
         oauth_client().authorize_token.assert_called_with(
-            'abcd', 'profile', '543210789456')
+            core_client.return_value.login.return_value,
+            'profile'
+        )
 
 
 class TestGetBrowserIDAssertion(unittest.TestCase):

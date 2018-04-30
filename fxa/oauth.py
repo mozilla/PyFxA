@@ -3,6 +3,9 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import json
 
+import os
+import base64
+import hashlib
 from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
@@ -52,8 +55,16 @@ class Client(object):
             service=client_id
         )
 
+    def get_client_metadata(self, client_id=None):
+        """Get the OAuth client metadata for a given client_id."""
+        if client_id is None:
+            client_id = self.client_id
+        return self.apiclient.get("/client/{0}".format(client_id))
+
     def get_redirect_url(self, state="", redirect_uri=None, scope=None,
-                         action=None, email=None, client_id=None):
+                         action=None, email=None, client_id=None,
+                         code_challenge=None, code_challenge_method=None,
+                         access_type=None, keys_jwk=None):
         """Get the URL to redirect to to initiate the oauth flow."""
         if client_id is None:
             client_id = self.client_id
@@ -69,16 +80,26 @@ class Client(object):
             params["action"] = action
         if email is not None:
             params["email"] = email
+        if code_challenge is not None:
+            params["code_challenge"] = code_challenge
+        if code_challenge_method is not None:
+            params["code_challenge_method"] = code_challenge_method
+        if keys_jwk is not None:
+            params["keys_jwk"] = keys_jwk
+        if access_type is not None:
+            params["access_type"] = access_type
         query_str = urlencode(params)
         authorization_url = urlparse(self.server_url + "/authorization")
         return urlunparse(authorization_url._replace(query=query_str))
 
-    def trade_code(self, code, client_id=None, client_secret=None):
+    def trade_code(self, code, client_id=None, client_secret=None,
+                   code_verifier=None):
         """Trade the authentication code for a longer lived token.
 
         :param code: the authentication code from the oauth redirect dance.
         :param client_id: the string generated during FxA client registration.
         :param client_secret: the related secret string.
+        :param code_verifier: optional PKCE code verifier.
         :returns: a dict with user id and authorized scopes for this token.
         """
         if client_id is None:
@@ -89,17 +110,21 @@ class Client(object):
         body = {
             'code': code,
             'client_id': client_id,
-            'client_secret': client_secret
         }
+        if client_secret is not None:
+            body["client_secret"] = client_secret
+        if code_verifier is not None:
+            body["code_verifier"] = code_verifier
         resp = self.apiclient.post(url, body)
 
         if 'access_token' not in resp:
             error_msg = 'access_token missing in OAuth response'
             raise OutOfProtocolError(error_msg)
 
-        return resp['access_token']
+        return resp
 
-    def authorize_code(self, sessionOrAssertion, scope=None, client_id=None):
+    def authorize_code(self, sessionOrAssertion, scope=None, client_id=None,
+                       code_challenge=None, code_challenge_method=None):
         """Trade an identity assertion for an oauth authorization code.
 
         This method takes an identity assertion for a user and uses it to
@@ -107,13 +132,14 @@ class Client(object):
         traded for a full-blown oauth token.
 
         Note that the authorize_token() method does the same thing but skips
-        the intermediate step of using a short-lived code, and hence this
-        method is likely only useful for testing purposes.
+        the intermediate step of using a short-lived code.  You should prefer
+        that method if the registered OAuth client_id has `canGrant` permission.
 
         :param sessionOrAssertion: an identity assertion for the target user,
                                    or an auth session to use to make one.
         :param scope: optional scope to be provided by the token.
         :param client_id: the string generated during FxA client registration.
+        :param code_challenge: optional PKCE code challenge.
         """
         if client_id is None:
             client_id = self.client_id
@@ -126,6 +152,9 @@ class Client(object):
         }
         if scope is not None:
             body["scope"] = scope
+        if code_challenge is not None:
+            body["code_challenge"] = code_challenge
+            body["code_challenge_method"] = code_challenge_method or "S256"
         resp = self.apiclient.post(url, body)
 
         if "redirect" not in resp:
@@ -227,3 +256,20 @@ class Client(object):
             'token': token
         }
         self.apiclient.post(url, body)
+
+    def generate_pkce_challenge(self):
+        """Ramdomly generate parameters for a PKCE challenge.
+
+        This method returns a two-tuple (challenge, response) where the first
+        item contains request parameters for a PKCE challenge, and the second
+        item contains the corresponding parameters for a verification.
+        """
+        code_verifier = base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8').rstrip("=")
+        raw_challenge = hashlib.sha256(code_verifier.encode('utf-8')).digest()
+        code_challenge = base64.urlsafe_b64encode(raw_challenge).decode('utf-8').rstrip("=")
+        return ({
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
+        }, {
+            "code_verifier": code_verifier,
+        })

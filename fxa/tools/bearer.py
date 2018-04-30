@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import absolute_import
-from six.moves.urllib.parse import urlparse
 from fxa import core
 from fxa import oauth
 
@@ -11,6 +10,8 @@ def get_bearer_token(email, password, scopes=None,
                      account_server_url=None,
                      oauth_server_url=None,
                      client_id=None,
+                     client_secret=None,
+                     use_pkce=False,
                      unblock_code=None):
 
     message = None
@@ -33,12 +34,24 @@ def get_bearer_token(email, password, scopes=None,
     client = core.Client(server_url=account_server_url)
     session = client.login(email, password, unblock_code=unblock_code)
 
-    url = urlparse(oauth_server_url)
-    audience = "%s://%s/" % (url.scheme, url.netloc)
+    oauth_client = oauth.Client(client_id, client_secret,
+                                server_url=oauth_server_url)
 
-    bid_assertion = session.get_identity_assertion(audience)
-    oauth_client = oauth.Client(server_url=oauth_server_url)
-    token = oauth_client.authorize_token(bid_assertion,
-                                         ' '.join(scopes),
-                                         client_id)
+    # XXX TODO: we should be able to automaticaly choose the most
+    # direct route to getting a token, based on registered client
+    # metadata.  Unfortunately the oauth-server doesn't (yet) expose
+    # client properties like `canGrant` and `isPublic`.
+    # print metadata
+    # metadata = oauth_client.get_client_metadata()
+
+    scope = ' '.join(scopes)
+    if client_secret is None and not use_pkce:
+        token = oauth_client.authorize_token(session, scope)
+    else:
+        challenge = verifier = {}
+        if use_pkce:
+            (challenge, verifier) = oauth_client.generate_pkce_challenge()
+        code = oauth_client.authorize_code(session, scope, **challenge)
+        token = oauth_client.trade_code(code, **verifier)
+
     return token
