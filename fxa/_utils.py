@@ -71,10 +71,8 @@ def scope_matches(provided, required):
 
     :note:
 
-        Sub-scopes are expressed using semi-colons.
-
-        A required sub-scope will always match if its root-scope is among those
-        provided (e.g. ``profile:avatar`` will match ``profile`` if provided).
+        The rules for parsing and matching scopes in FxA are documented at
+        https://github.com/mozilla/fxa-oauth-server/blob/master/docs/scopes.md
 
     :param provided: list of scopes provided for the current token.
     :param required: the scope required (e.g. by the application).
@@ -83,23 +81,59 @@ def scope_matches(provided, required):
     if not isinstance(required, (list, tuple)):
         required = [required]
 
-    def split_subscope(s):
-        return tuple((s.split(':') + [None])[:2])
+    for req in required:
+        if not any(_match_single_scope(prov, req) for prov in provided):
+            return False
 
-    provided = set([split_subscope(p) for p in provided])
-    required = set([split_subscope(r) for r in required])
+    return True
 
-    root_provided = set([root for (root, sub) in provided])
-    root_required = set([root for (root, sub) in required])
 
-    if not root_required.issubset(root_provided):
+def _match_single_scope(provided, required):
+    if provided.startswith('https:'):
+        return _match_url_scope(provided, required)
+    else:
+        return _match_shortname_scope(provided, required)
+
+
+def _match_shortname_scope(provided, required):
+    if required.startswith('https:'):
         return False
+    prov_names = provided.split(':')
+    req_names = required.split(':')
+    # If we require :write, it must be provided.
+    if req_names[-1] == 'write':
+        if prov_names[-1] != 'write':
+            return False
+        req_names.pop()
+        prov_names.pop()
+    elif prov_names[-1] == 'write':
+        prov_names.pop()
+    # Provided names must be a prefix of required names.
+    if len(prov_names) > len(req_names):
+        return False
+    for (p, r) in zip(prov_names, req_names):
+        if p != r:
+            return False
+    # It matches!
+    return True
 
-    for (root, sub) in required:
-        if (root, None) in provided:
-            provided.add((root, sub))
 
-    return required.issubset(provided)
+def _match_url_scope(provided, required):
+    if not required.startswith('https:'):
+        return False
+    # Pop the hash fragments
+    (prov_url, prov_hash) = (provided.rsplit('#', 1) + [None])[:2]
+    (req_url, req_hash) = (required.rsplit('#', 1) + [None])[:2]
+    # Provided URL must be a prefix of required.
+    if req_url != prov_url:
+        if not (req_url.startswith(prov_url + '/')):
+            return False
+    # If hash is provided, it must match that required.
+    if prov_hash:
+        if not req_hash or req_hash != prov_hash:
+            return False
+    # It matches!
+    return True
 
 
 class APIClient(object):

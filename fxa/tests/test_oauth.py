@@ -440,6 +440,66 @@ class TestScopeMatch(unittest.TestCase):
         self.assertFalse(scope_matches(['abc:xyz'], ['abc']))
         self.assertFalse(scope_matches(['abc:xyz', 'def'], ['abc', 'def']))
 
+    def test_published_test_vectors_for_valid_matches(self):
+        VALID_MATCHES = [
+            ['profile:write', 'profile'],
+            ['profile', 'profile:email'],
+            ['profile:write', 'profile:email'],
+            ['profile:write', 'profile:email:write'],
+            ['profile:email:write', 'profile:email'],
+            ['profile profile:email:write', 'profile:email'],
+            ['profile profile:email:write', 'profile:display_name'],
+            ['profile https://identity.mozilla.com/apps/oldsync', 'profile'],
+            ['foo bar:baz', 'foo:dee'],
+            ['foo bar:baz', 'bar:baz'],
+            ['foo bar:baz', 'foo:mah:pa bar:baz:quux'],
+            ['profile https://identity.mozilla.com/apps/oldsync',
+                'https://identity.mozilla.com/apps/oldsync'],
+            ['https://identity.mozilla.com/apps/oldsync',
+                'https://identity.mozilla.com/apps/oldsync#read'],
+            ['https://identity.mozilla.com/apps/oldsync',
+                'https://identity.mozilla.com/apps/oldsync/bookmarks'],
+            ['https://identity.mozilla.com/apps/oldsync',
+                'https://identity.mozilla.com/apps/oldsync/bookmarks#read'],
+            ['https://identity.mozilla.com/apps/oldsync#read',
+                'https://identity.mozilla.com/apps/oldsync/bookmarks#read'],
+            ['https://identity.mozilla.com/apps/oldsync#read profile',
+                'https://identity.mozilla.com/apps/oldsync/bookmarks#read']
+        ]
+        for (provided, required) in VALID_MATCHES:
+            self.assertTrue(scope_matches(provided.split(), required.split()),
+                            '"{}" should match "{}"'.format(provided, required))
+
+    def test_published_test_vectors_for_invalid_matches(self):
+        INVALID_MATCHES = [
+            ['profile:email:write', 'profile'],
+            ['profile:email:write', 'profile:write'],
+            ['profile:email', 'profile:display_name'],
+            ['profilebogey', 'profile'],
+            ['foo bar:baz', 'bar'],
+            ['profile:write', 'https://identity.mozilla.com/apps/oldsync'],
+            ['profile profile:email:write', 'profile:write'],
+            ['https', 'https://identity.mozilla.com/apps/oldsync'],
+            ['https://identity.mozilla.com/apps/oldsync', 'profile'],
+            ['https://identity.mozilla.com/apps/oldsync#read',
+                'https://identity.mozila.com/apps/oldsync/bookmarks'],
+            ['https://identity.mozilla.com/apps/oldsync#write',
+                'https://identity.mozila.com/apps/oldsync/bookmarks#read'],
+            ['https://identity.mozilla.com/apps/oldsync/bookmarks',
+                'https://identity.mozila.com/apps/oldsync'],
+            ['https://identity.mozilla.com/apps/oldsync/bookmarks',
+                'https://identity.mozila.com/apps/oldsync/passwords'],
+            ['https://identity.mozilla.com/apps/oldsyncer',
+                'https://identity.mozila.com/apps/oldsync'],
+            ['https://identity.mozilla.com/apps/oldsync',
+                'https://identity.mozila.com/apps/oldsyncer'],
+            ['https://identity.mozilla.org/apps/oldsync',
+                'https://identity.mozila.com/apps/oldsync']
+        ]
+        for (provided, required) in INVALID_MATCHES:
+            self.assertFalse(scope_matches(provided.split(), required.split()),
+                             '"{}" should not match "{}"'.format(provided, required))
+
 
 class TestCachedClient(unittest.TestCase):
     server_url = TEST_SERVER_URL
