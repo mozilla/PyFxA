@@ -3,6 +3,15 @@ CHANGELOG
 
 This document describes changes between each past release.
 
+0.6.0 (2018-05-04)
+==================
+
+- Add support for PKCE challenge and response in the OAuth flow.
+- Add ability to supply `keys_jwk` when starting an OAuth flow.
+- Improve scope-matching logic based on new FxA testcases,
+  including handling of URL-format scopes.
+
+
 0.5.0 (2018-01-12)
 ==================
 
