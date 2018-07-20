@@ -97,6 +97,7 @@ class Client(object):
             token=resp["sessionToken"],
             key_fetch_token=resp.get("keyFetchToken"),
             verified=resp["verified"],
+            verificationMethod=resp.get("verificationMethod"),
             auth_timestamp=resp["authAt"],
         )
 
@@ -247,13 +248,14 @@ class Client(object):
 class Session(object):
 
     def __init__(self, client, email, stretchpwd, uid, token,
-                 key_fetch_token=None, verified=False, auth_timestamp=0,
-                 cert_keypair=None):
+                 key_fetch_token=None, verified=False, verificationMethod=None,
+                 auth_timestamp=0, cert_keypair=None):
         self.client = client
         self.email = email
         self.uid = uid
         self.token = token
         self.verified = verified
+        self.verificationMethod = verificationMethod
         self.auth_timestamp = auth_timestamp
         self.cert_keypair = None
         self.keys = None
@@ -320,6 +322,28 @@ class Session(object):
                 raise TypeError(msg)
         url = "/recovery_email/resend_code"
         self.apiclient.post(url, body, auth=self._auth)
+
+    def totp_create(self):
+        url = "/totp/create"
+        return self.apiclient.post(url, {}, auth=self._auth)
+
+    def totp_exists(self):
+        url = "/totp/exists"
+        resp = self.apiclient.get(url, auth=self._auth)
+        return resp["exists"]
+
+    def totp_delete(self):
+        url = "/totp/destroy"
+        resp = self.apiclient.post(url, {}, auth=self._auth)
+        return resp["exists"]
+
+    def totp_verify(self, code):
+        url = "/session/verify/totp"
+        body = {
+            "code": code,
+        }
+        resp = self.apiclient.post(url, body, auth=self._auth)
+        return resp["success"]
 
     def sign_certificate(self, public_key, duration=DEFAULT_CERT_DURATION,
                          service=None):
