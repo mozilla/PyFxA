@@ -334,8 +334,7 @@ class Session(object):
 
     def totp_delete(self):
         url = "/totp/destroy"
-        resp = self.apiclient.post(url, {}, auth=self._auth)
-        return resp["exists"]
+        return self.apiclient.post(url, {}, auth=self._auth)
 
     def totp_verify(self, code):
         url = "/session/verify/totp"
@@ -343,6 +342,9 @@ class Session(object):
             "code": code,
         }
         resp = self.apiclient.post(url, body, auth=self._auth)
+        if resp["success"]:
+            self.verified = True
+
         return resp["success"]
 
     def sign_certificate(self, public_key, duration=DEFAULT_CERT_DURATION,

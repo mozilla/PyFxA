@@ -338,8 +338,11 @@ class TestCoreClientSession(unittest.TestCase):
         with self.assertRaises(fxa.errors.ClientError):
             self.session.totp_create()
 
-        # Created but not verified returns false
+        # Created but not verified returns false (and deletes the token)
         self.assertFalse(self.session.totp_exists())
+
+        # Creating again should work this time
+        resp = self.session.totp_create()
 
         # Verify the code
         code = pyotp.TOTP(resp["secret"]).now()
