@@ -6,6 +6,8 @@ import time
 from six import binary_type
 from six.moves.urllib.parse import urlparse
 
+import pyotp
+
 from browserid import jwt
 import browserid.tests.support
 import browserid.utils
@@ -328,3 +330,30 @@ class TestCoreClientSession(unittest.TestCase):
                                                         service="test-me")
         data = browserid.verify(assertion, audience="http://example.com")
         self.assertEquals(data["status"], "okay")
+
+    def test_totp(self):
+        resp = self.session.totp_create()
+
+        # Double create causes a client error
+        with self.assertRaises(fxa.errors.ClientError):
+            self.session.totp_create()
+
+        # Created but not verified returns false (and deletes the token)
+        self.assertFalse(self.session.totp_exists())
+
+        # Creating again should work this time
+        resp = self.session.totp_create()
+
+        # Verify the code
+        code = pyotp.TOTP(resp["secret"]).now()
+        self.assertTrue(self.session.totp_verify(code))
+        self.assertTrue(self.session.verified)
+
+        # Should exist now
+        self.assertTrue(self.session.totp_exists())
+
+        # Remove the code
+        resp = self.session.totp_delete()
+
+        # And now should not exist
+        self.assertFalse(self.session.totp_exists())
