@@ -225,6 +225,7 @@ class TestCoreClientSession(unittest.TestCase):
         m = self.acct.wait_for_email(lambda m: "x-verify-code" in m["headers"])
         if not m:
             raise RuntimeError("Verification email was not received")
+        self.acct.clear()
         self.session.verify_email_code(m["headers"]["x-verify-code"])
         # Fetch the keys.
         self.session.fetch_keys()
@@ -290,6 +291,14 @@ class TestCoreClientSession(unittest.TestCase):
 
         # Check that we can use the new password.
         session2 = self.client.login(self.acct.email, newpwd, keys=True)
+        if not session2.get_email_status().get("verified"):
+            def has_verify_code(m):
+                return "x-verify-code" in m["headers"]
+            m = self.acct.wait_for_email(has_verify_code)
+            if not m:
+                raise RuntimeError("Verification email was not received")
+            self.acct.clear()
+            session2.verify_email_code(m["headers"]["x-verify-code"])
 
         # Check that encryption keys have been preserved.
         session2.fetch_keys()
