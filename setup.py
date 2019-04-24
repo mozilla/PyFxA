@@ -4,8 +4,6 @@ import os
 import sys
 from setuptools import setup, find_packages
 
-PY2 = sys.version_info[0] == 2
-
 # Read package meta-data from the containing directory.
 
 here = os.path.abspath(os.path.dirname(__file__))
