@@ -25,9 +25,6 @@ with open_file("dev-requirements.txt") as f:
     requires = (ln.strip() for ln in f)
     test_requires = [ln for ln in requires if ln and not ln.startswith("#")]
 
-if sys.version_info < (2, 7):
-    test_requires.append("unittest2")
-
 # Read the version number from the module source code.
 # To do so, we parse out all lines up to the ones defining __version__ and
 # execute them, then grab the resulting value of the __version__ variable.
