@@ -13,6 +13,7 @@ def open_file(filename):
     """Open a related file with utf-8 encoding."""
     return codecs.open(os.path.join(here, filename), encoding='utf-8')
 
+
 with open_file("README.rst") as f:
     README = f.read()
 
