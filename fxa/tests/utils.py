@@ -5,16 +5,12 @@ import sys
 import time
 import random
 import requests
+import unittest
 from binascii import unhexlify
 from six import binary_type
 from six.moves.urllib.parse import urlparse, urljoin
 
 from fxa._utils import uniq
-
-if sys.version_info >= (2, 7):
-    import unittest  # NOQA
-else:
-    import unittest2 as unittest  # NOQA
 
 
 DUMMY_EMAIL = "PyFxATester@restmail.net"
