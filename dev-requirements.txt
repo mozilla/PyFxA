@@ -2,4 +2,8 @@ grequests
 mock;python_version<"3.3"
 responses
 unittest2;python_version<"2.7"
+pytest
+pytest-runner
+pytest-cov
+pytest-flake8
 pyotp
