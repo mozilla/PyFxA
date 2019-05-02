@@ -2,12 +2,12 @@ language: python
 sudo: false
 python:
     - "2.7"
-    - "3.4"
-    - "3.5"
+    - "3.6"
 install:
-    - make build
+    - pip install -r ./dev-requirements.txt
+    - python setup.py build
 script:
-    - make test
+    - python setup.py test
 notifications:
     irc:
         channels: 

@@ -1,20 +1,15 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-import sys
 import time
 import random
 import requests
+import unittest # NOQA
 from binascii import unhexlify
 from six import binary_type
 from six.moves.urllib.parse import urlparse, urljoin
 
 from fxa._utils import uniq
-
-if sys.version_info >= (2, 7):
-    import unittest  # NOQA
-else:
-    import unittest2 as unittest  # NOQA
 
 
 DUMMY_EMAIL = "PyFxATester@restmail.net"

@@ -1,4 +1,7 @@
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 from binascii import hexlify
 from os import urandom
 

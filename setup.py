@@ -4,8 +4,6 @@ import os
 import sys
 from setuptools import setup, find_packages
 
-PY2 = sys.version_info[0] == 2
-
 # Read package meta-data from the containing directory.
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -14,6 +12,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 def open_file(filename):
     """Open a related file with utf-8 encoding."""
     return codecs.open(os.path.join(here, filename), encoding='utf-8')
+
 
 with open_file("README.rst") as f:
     README = f.read()
@@ -24,9 +23,6 @@ with open_file("CHANGES.txt") as f:
 with open_file("dev-requirements.txt") as f:
     requires = (ln.strip() for ln in f)
     test_requires = [ln for ln in requires if ln and not ln.startswith("#")]
-
-if sys.version_info < (2, 7):
-    test_requires.append("unittest2")
 
 # Read the version number from the module source code.
 # To do so, we parse out all lines up to the ones defining __version__ and

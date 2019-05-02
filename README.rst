@@ -2,6 +2,9 @@
 PyFxA: Python library for interacting with Firefox Accounts
 ===========================================================
 
+.. image:: https://travis-ci.org/mozilla/PyFxA.svg?branch=master
+    :target: https://travis-ci.org/mozilla/PyFxA
+
 This is python library for interacting with the Firefox Accounts ecosystem.
 
 Eventually, it is planned to provide easy support for the following features:
