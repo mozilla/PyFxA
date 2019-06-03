@@ -44,7 +44,7 @@ if sys.version_info < (2, 7, 9):
 
 
 setup(name="PyFxA",
-      version='0.7.1',
+      version='0.7.2',
       description="Firefox Accounts client library for Python",
       long_description=README + "\n\n" + CHANGES,
       classifiers=[
