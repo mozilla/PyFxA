@@ -246,9 +246,10 @@ class APIClient(object):
         # Apply defaults and perform the request.
         while url.startswith("/"):
             url = url[1:]
-        if not self.server_url.endswith("/"):
-            self.server_url = self.server_url + "/"
-        url = urljoin(self.server_url, url)
+        if self.server_url.endswith("/"):
+            url = urljoin(self.server_url, url)
+        else:
+            url = urljoin(self.server_url + "/", url)
         if self.timeout is not None:
             kwds.setdefault("timeout", self.timeout)
 
