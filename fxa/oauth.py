@@ -93,13 +93,14 @@ class Client(object):
         return urlunparse(authorization_url._replace(query=query_str))
 
     def trade_code(self, code, client_id=None, client_secret=None,
-                   code_verifier=None):
+                   code_verifier=None, ttl=None):
         """Trade the authentication code for a longer lived token.
 
         :param code: the authentication code from the oauth redirect dance.
         :param client_id: the string generated during FxA client registration.
         :param client_secret: the related secret string.
         :param code_verifier: optional PKCE code verifier.
+        :param ttl: optional ttl in seconds, the access token is valid for.
         :returns: a dict with user id and authorized scopes for this token.
         """
         if client_id is None:
@@ -115,6 +116,8 @@ class Client(object):
             body["client_secret"] = client_secret
         if code_verifier is not None:
             body["code_verifier"] = code_verifier
+        if ttl is not None:
+            body["ttl"] = ttl
         resp = self.apiclient.post(url, body)
 
         if 'access_token' not in resp:
