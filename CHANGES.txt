@@ -3,6 +3,12 @@ CHANGELOG
 
 This document describes changes between each past release.
 
+0.7.3 (2019-07-26)
+==================
+
+- Allow specifying a `ttl` when redeeming an authorization code.
+
+
 0.7.2 (2019-06-03)
 ==================
 

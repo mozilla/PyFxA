@@ -24,10 +24,6 @@ with open_file("dev-requirements.txt") as f:
     requires = (ln.strip() for ln in f)
     test_requires = [ln for ln in requires if ln and not ln.startswith("#")]
 
-# Read the version number from the module source code.
-# To do so, we parse out all lines up to the ones defining __version__ and
-# execute them, then grab the resulting value of the __version__ variable.
-
 REQUIREMENTS = [
     "requests>=2.4.2",
     "cryptography",
@@ -44,7 +40,7 @@ if sys.version_info < (2, 7, 9):
 
 
 setup(name="PyFxA",
-      version='0.7.2',
+      version='0.7.3',
       description="Firefox Accounts client library for Python",
       long_description=README + "\n\n" + CHANGES,
       classifiers=[
