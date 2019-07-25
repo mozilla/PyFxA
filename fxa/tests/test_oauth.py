@@ -133,6 +133,24 @@ class TestClientTradeCode(unittest.TestCase):
           'code_verifier': 'verifyme',
         })
 
+    @responses.activate
+    def test_trade_token_can_take_ttl(self):
+        responses.add(responses.POST,
+                      'https://server/v1/token',
+                      body='{"access_token": "tokay"}',
+                      content_type='application/json')
+        tokens = self.client.trade_code(
+            code='1234',
+            ttl=120,
+        )
+        self.assertEqual(tokens, {"access_token": "tokay"})
+        self.assertEqual(self._get_request_body(), {
+          'client_id': 'abc',
+          'client_secret': 'cake',
+          'code': '1234',
+          'ttl': 120
+        })
+
 
 class TestAuthClientVerifyCode(unittest.TestCase):
 
