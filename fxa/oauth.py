@@ -6,6 +6,7 @@ import json
 import os
 import base64
 import hashlib
+from binascii import hexlify
 from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
@@ -148,10 +149,11 @@ class Client(object):
             client_id = self.client_id
         assertion = self._get_identity_assertion(sessionOrAssertion, client_id)
         url = "/authorization"
+        state = base64.urlsafe_b64encode(os.urandom(23)).decode('utf-8').rstrip("=")
         body = {
             "client_id": client_id,
             "assertion": assertion,
-            "state": "x",  # state is required, but we don't use it
+            "state": state
         }
         if scope is not None:
             body["scope"] = scope
@@ -167,6 +169,17 @@ class Client(object):
         # This flow is designed for web-based redirects.
         # In order to get the code we must parse it from the redirect url.
         query_params = parse_qs(urlparse(resp["redirect"]).query)
+
+        # Make sure the redirect URL is authentic
+        if "state" not in query_params:
+            error_msg = "state missing in OAuth response"
+            raise OutOfProtocolError(error_msg)
+
+        if state != query_params["state"][0]:
+            error_msg = "state mismatch in OAuth response (wanted: '{}', got: '{}')".format(
+                state, query_params["state"][0])
+            raise OutOfProtocolError(error_msg)
+
         try:
             return query_params["code"][0]
         except (KeyError, IndexError, ValueError):
