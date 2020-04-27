@@ -605,7 +605,7 @@ class TestGeventPatch(unittest.TestCase):
 class AnyStringValue:
 
     def __eq__(self, other):
-        return isinstance(other, str)
+        return isinstance(other, six.string_types)
 
     def __repr__(self):
         return 'any string'
