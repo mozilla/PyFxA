@@ -85,8 +85,8 @@ class TestCoreCrypto(unittest.TestCase):
 
     def test_hkdf_namespace_handle_unicode_strings(self):
         kw = hkdf_namespace(text_type("foobar"))
-        self.assertEquals(kw, b"identity.mozilla.com/picl/v1/foobar")
+        self.assertEqual(kw, b"identity.mozilla.com/picl/v1/foobar")
 
     def test_hkdf_namespace_handle_bytes_strings(self):
         kw = hkdf_namespace("foobar".encode('utf-8'))
-        self.assertEquals(kw, b"identity.mozilla.com/picl/v1/foobar")
+        self.assertEqual(kw, b"identity.mozilla.com/picl/v1/foobar")

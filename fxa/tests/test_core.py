@@ -176,7 +176,7 @@ class TestCoreClient(unittest.TestCase):
         # If everything went well, verify_email_code should return an empty json object
         response = self.client.verify_email_code(m["headers"]["x-uid"],
                                                  m["headers"]["x-verify-code"])
-        self.assertEquals(response, {})
+        self.assertEqual(response, {})
 
     def test_send_unblock_code(self):
         acct = TestEmailAccount(email="block-{uniq}@{hostname}")
@@ -188,7 +188,7 @@ class TestCoreClient(unittest.TestCase):
 
         # Initiate sending unblock code
         response = self.client.send_unblock_code(acct.email)
-        self.assertEquals(response, {})
+        self.assertEqual(response, {})
 
         m = acct.wait_for_email(lambda m: "x-unblock-code" in m["headers"])
         if not m:
@@ -302,16 +302,16 @@ class TestCoreClientSession(unittest.TestCase):
 
         # Check that encryption keys have been preserved.
         session2.fetch_keys()
-        self.assertEquals(self.session.keys, session2.keys)
+        self.assertEqual(self.session.keys, session2.keys)
 
     def test_get_identity_assertion(self):
         assertion = self.session.get_identity_assertion("http://example.com")
         data = browserid.verify(assertion, audience="http://example.com")
-        self.assertEquals(data["status"], "okay")
+        self.assertEqual(data["status"], "okay")
         expected_issuer = urlparse(self.session.server_url).hostname
-        self.assertEquals(data["issuer"], expected_issuer)
+        self.assertEqual(data["issuer"], expected_issuer)
         expected_email = "{0}@{1}".format(self.session.uid, expected_issuer)
-        self.assertEquals(data["email"], expected_email)
+        self.assertEqual(data["email"], expected_email)
 
     def test_get_identity_assertion_handles_duration(self):
         millis = int(round(time.time() * 1000))
@@ -338,7 +338,7 @@ class TestCoreClientSession(unittest.TestCase):
         assertion = self.session.get_identity_assertion("http://example.com",
                                                         service="test-me")
         data = browserid.verify(assertion, audience="http://example.com")
-        self.assertEquals(data["status"], "okay")
+        self.assertEqual(data["status"], "okay")
 
     def test_totp(self):
         resp = self.session.totp_create()

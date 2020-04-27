@@ -6,7 +6,6 @@ import json
 import os
 import base64
 import hashlib
-from binascii import hexlify
 from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
