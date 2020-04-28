@@ -152,7 +152,7 @@ class Client(object):
         # Although not relevant in this scenario from a security perspective,
         # we generate a random 'state' and check the returned redirect URL
         # for completeness.
-        state = base64.urlsafe_b64encode(os.urandom(23)).decode('utf-8').rstrip("=")
+        state = base64.urlsafe_b64encode(os.urandom(24)).decode('utf-8')
 
         body = {
             "client_id": client_id,
