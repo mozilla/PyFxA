@@ -148,7 +148,12 @@ class Client(object):
             client_id = self.client_id
         assertion = self._get_identity_assertion(sessionOrAssertion, client_id)
         url = "/authorization"
+
+        # Although not relevant in this scenario from a security perspective,
+        # we generate a random 'state' and check the returned redirect URL
+        # for completeness.
         state = base64.urlsafe_b64encode(os.urandom(23)).decode('utf-8').rstrip("=")
+
         body = {
             "client_id": client_id,
             "assertion": assertion,
@@ -169,7 +174,7 @@ class Client(object):
         # In order to get the code we must parse it from the redirect url.
         query_params = parse_qs(urlparse(resp["redirect"]).query)
 
-        # Make sure the redirect URL is authentic
+        # Check that the 'state' parameter is present and the same we provided
         if "state" not in query_params:
             error_msg = "state missing in OAuth response"
             raise OutOfProtocolError(error_msg)
