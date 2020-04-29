@@ -27,7 +27,7 @@ class TestFxABrowserIDAuth(unittest.TestCase):
                 return_value=mocked_core_client())
     def test_audience_is_parsed(self, client_patch):
         self.auth(Request())
-        self.assertEquals(self.auth.audience, "http://www.example.com/")
+        self.assertEqual(self.auth.audience, "http://www.example.com/")
 
     @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
@@ -86,12 +86,12 @@ class TestFxABrowserIDAuth(unittest.TestCase):
 
         # First call should set the cache value
         auth(Request())
-        self.assertEquals(client_patch.return_value.login.return_value.
-                          get_identity_assertion.call_count, 1)
+        self.assertEqual(client_patch.return_value.login.return_value.
+                         get_identity_assertion.call_count, 1)
         # Second call should use the cache value
         auth(Request())
-        self.assertEquals(client_patch.return_value.login.return_value.
-                          get_identity_assertion.call_count, 1)
+        self.assertEqual(client_patch.return_value.login.return_value.
+                         get_identity_assertion.call_count, 1)
 
     @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
@@ -157,13 +157,13 @@ class TestFxABearerTokenAuth(unittest.TestCase):
                                   core_client_patch):
         # First call should set the cache value
         self.auth(Request())
-        self.assertEquals(core_client_patch.call_count, 1)
-        self.assertEquals(oauth_client_patch.call_count, 1)
+        self.assertEqual(core_client_patch.call_count, 1)
+        self.assertEqual(oauth_client_patch.call_count, 1)
 
         # Second call should use the cache value
         self.auth(Request())
-        self.assertEquals(core_client_patch.call_count, 1)
-        self.assertEquals(oauth_client_patch.call_count, 1)
+        self.assertEqual(core_client_patch.call_count, 1)
+        self.assertEqual(oauth_client_patch.call_count, 1)
 
     @mock.patch('fxa.core.Client',
                 return_value=mocked_core_client())
