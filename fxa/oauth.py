@@ -9,6 +9,7 @@ import hashlib
 from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
+import jwt
 from fxa.cache import MemoryCache, DEFAULT_CACHE_EXPIRY
 from fxa.constants import PRODUCTION_URLS
 from fxa.errors import OutOfProtocolError, ScopeMismatchError
@@ -239,11 +240,21 @@ class Client(object):
             resp = None
 
         if resp is None:
-            url = '/verify'
-            body = {
-                'token': token
+            ## TODO we want to fetch https://oauth.accounts.firefox.com/.well-known/openid-configuration and then get the jwks_uri key to get the following url, but we'll just hardcode it like this for now until we are closer to production. We need to do this because oauth.accounts.firefox.com does not yet respond to .well-known, but accounts.firefox.com does; for consistency, oauth.accounts.firefox.com should respond to .well-known. 
+            
+            secret = jwt.algorithms.RSAAlgorithm.from_jwk(
+                self.apiclient.get('/v1/jwks')
+            )
+            decoded = jwt.decode(
+                token, secret, algorithms=['RS256'], options={'verify_aud': False}
+            )
+            resp = {
+                'user': decoded['sub'],
+                'client_id': decoded['client_id'],
+                'scope': decoded['scope'],
+                'generation': decoded['fxa-generation'],
+                'profile_changed_at': decoded['fxa-profileChangedAt']
             }
-            resp = self.apiclient.post(url, body)
 
             missing_attrs = ", ".join([
                 k for k in ('user', 'scope', 'client_id') if k not in resp
