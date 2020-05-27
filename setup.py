@@ -28,6 +28,7 @@ REQUIREMENTS = [
     "requests>=2.4.2",
     "cryptography",
     "PyBrowserID",
+    "PyJWT",
     "hawkauthlib",
     "six"
 ]
