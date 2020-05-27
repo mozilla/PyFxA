@@ -223,6 +223,19 @@ class Client(object):
 
         return resp['access_token']
 
+    def _decode_key(self, key, token):
+        pubkey = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+        decoded = jwt.decode(
+            token, pubkey, algorithms=['RS256'], options={'verify_aud': False}
+        )
+        return {
+            'user': decoded['sub'],
+            'client_id': decoded['client_id'],
+            'scope': decoded['scope'],
+            'generation': decoded['fxa-generation'],
+            'profile_changed_at': decoded['fxa-profileChangedAt']
+        }
+
     def verify_token(self, token, scope=None):
         """Verify an OAuth token, and retrieve user id and scopes.
 
@@ -240,25 +253,18 @@ class Client(object):
             resp = None
 
         if resp is None:
-            ## TODO we want to fetch https://oauth.accounts.firefox.com/.well-known/openid-configuration and then get the jwks_uri key to get the /v1/jwks url, but we'll just hardcode it like this for now until we are closer to production. We need to do this because oauth.accounts.firefox.com does not yet respond to .well-known, but accounts.firefox.com does; for consistency, oauth.accounts.firefox.com should respond to .well-known.
-            
-            secret = jwt.algorithms.RSAAlgorithm.from_jwk(
-                self.apiclient.get('/jwks')
-            )
-            try:
-                decoded = jwt.decode(
-                    token, secret, algorithms=['RS256'], options={'verify_aud': False}
-                )
-                resp = {
-                    'user': decoded['sub'],
-                    'client_id': decoded['client_id'],
-                    'scope': decoded['scope'],
-                    'generation': decoded['fxa-generation'],
-                    'profile_changed_at': decoded['fxa-profileChangedAt']
-                }
-            except jwt.exceptions.DecodeError:
-                resp = self.apiclient.post(`/verify`, {'token': token })
+            ## TODO we want to fetch https://oauth.accounts.firefox.com/.well-known/openid-configuration and then get the jwks_uri key to get the /v1/jwks url, but we'll just hardcosde it like this for now until we are closer to production. We need to do this because oauth.accounts.firefox.com does not yet respond to .well-known, but accounts.firefox.com does; for consistency, oauth.accounts.firefox.com should respond to .well-known.
 
+            keys = self.apiclient.get('/jwks').get('keys', [])
+            resp = None
+            for key in keys:
+                try:
+                    resp = self._decode_key(key, token)
+                    break
+                except jwt.exceptions.DecodeError:
+                    continue
+            if resp is None:
+                resp = self.apiclient.post(`/verify`, {'token': token })
             missing_attrs = ", ".join([
                 k for k in ('user', 'scope', 'client_id') if k not in resp
             ])
