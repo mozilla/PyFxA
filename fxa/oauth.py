@@ -229,11 +229,11 @@ class Client(object):
             token, pubkey, algorithms=['RS256'], options={'verify_aud': False}
         )
         return {
-            'user': decoded['sub'],
-            'client_id': decoded['client_id'],
-            'scope': decoded['scope'],
-            'generation': decoded['fxa-generation'],
-            'profile_changed_at': decoded['fxa-profileChangedAt']
+            'user': decoded.get('sub'),
+            'client_id': decoded.get('client_id'),
+            'scope': decoded.get('scope'),
+            'generation': decoded.get('fxa-generation'),
+            'profile_changed_at': decoded.get('fxa-profileChangedAt')
         }
 
     def verify_token(self, token, scope=None):
