@@ -243,7 +243,7 @@ class Client(object):
             ## TODO we want to fetch https://oauth.accounts.firefox.com/.well-known/openid-configuration and then get the jwks_uri key to get the /v1/jwks url, but we'll just hardcode it like this for now until we are closer to production. We need to do this because oauth.accounts.firefox.com does not yet respond to .well-known, but accounts.firefox.com does; for consistency, oauth.accounts.firefox.com should respond to .well-known.
             
             secret = jwt.algorithms.RSAAlgorithm.from_jwk(
-                self.apiclient.get('/v1/jwks')
+                self.apiclient.get('/jwks')
             )
             try:
                 decoded = jwt.decode(
