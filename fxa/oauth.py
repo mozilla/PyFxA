@@ -233,6 +233,8 @@ class Client(object):
         decoded = jwt.decode(
             token, pubkey, algorithms=['RS256'], options={'verify_aud': False}
         )
+        if jwt.get_unverified_header(token).get('typ') != 'at+jwt':
+            raise TrustError
         return {
             'user': decoded.get('sub'),
             'client_id': decoded.get('client_id'),
