@@ -223,7 +223,7 @@ class Client(object):
 
         return resp['access_token']
 
-    def _decode_key(self, key, token):
+    def _verify_jwt_token(self, key, token):
         pubkey = jwt.algorithms.RSAAlgorithm.from_jwk(key)
         # The FxA OAuth ecosystem currently doesn't make good use of aud, and instead relies on scope for restricting which services can accept which tokens. So there's no value in checking it here, and in fact if we check it here, it fails because the right audience isn't being requested.
         decoded = jwt.decode(
@@ -254,17 +254,24 @@ class Client(object):
             resp = None
 
         if resp is None:
-            ## TODO we want to fetch https://oauth.accounts.firefox.com/.well-known/openid-configuration and then get the jwks_uri key to get the /v1/jwks url, but we'll just hardcosde it like this for now until we are closer to production. We need to do this because oauth.accounts.firefox.com does not yet respond to .well-known, but accounts.firefox.com does; for consistency, oauth.accounts.firefox.com should respond to .well-known.
+            ## TODO we want to fetch
+            # https://oauth.accounts.firefox.com/.well-known/openid-configuration
+            # and then get the jwks_uri key to get the /jwks url, but we'll 
+            # just hardcosde it like this for now until we are closer to 
+            # production. We need to do this because oauth.accounts.firefox.com
+            # does not yet respond to .well-known, but accounts.firefox.com 
+            # does; for consistency, oauth.accounts.firefox.com should respond 
+            # to .well-known.
 
             keys = self.apiclient.get('/jwks').get('keys', [])
             resp = None
-            for key in keys:
+            for k in keys:
                 try:
-                    resp = self._decode_key(key, token)
+                    resp = self._verify_jwt_token(k, token)
                     break
                 except jwt.exceptions.DecodeError:
                     continue
-            if resp is None:
+            if resp is None or resp[key] is None:
                 resp = self.apiclient.post(`/verify`, {'token': token })
             missing_attrs = ", ".join([
                 k for k in ('user', 'scope', 'client_id') if k not in resp
