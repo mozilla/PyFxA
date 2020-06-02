@@ -225,7 +225,11 @@ class Client(object):
 
     def _verify_jwt_token(self, key, token):
         pubkey = jwt.algorithms.RSAAlgorithm.from_jwk(key)
-        # The FxA OAuth ecosystem currently doesn't make good use of aud, and instead relies on scope for restricting which services can accept which tokens. So there's no value in checking it here, and in fact if we check it here, it fails because the right audience isn't being requested.
+        # The FxA OAuth ecosystem currently doesn't make good use of aud, and
+        # instead relies on scope for restricting which services can accept
+        # which tokens. So there's no value in checking it here, and in fact if
+        # we check it here, it fails because the right audience isn't being
+        # requested.
         decoded = jwt.decode(
             token, pubkey, algorithms=['RS256'], options={'verify_aud': False}
         )
