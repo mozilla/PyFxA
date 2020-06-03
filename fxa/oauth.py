@@ -12,7 +12,7 @@ from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 import jwt
 from fxa.cache import MemoryCache, DEFAULT_CACHE_EXPIRY
 from fxa.constants import PRODUCTION_URLS
-from fxa.errors import OutOfProtocolError, ScopeMismatchError
+from fxa.errors import OutOfProtocolError, ScopeMismatchError, TrustError
 from fxa._utils import APIClient, scope_matches, get_hmac
 
 
@@ -271,14 +271,28 @@ class Client(object):
 
             keys = self.apiclient.get('/jwks').get('keys', [])
             resp = None
-            for k in keys:
-                try:
-                    resp = self._verify_jwt_token(k, token)
-                    break
-                except jwt.exceptions.DecodeError:
-                    continue
+            try:
+                for k in keys:
+                    try:
+                        resp = self._verify_jwt_token(k, token)
+                        break
+                    except jwt.exceptions.InvalidSignatureError:
+                        # It's only worth trying other keys in the event of
+                        # `InvalidSignature`; if it was invalid for other reasons
+                        # (e.g. it's expired) then using a different key won't
+                        # help. OTOH you might prefer to let the server do a bit of
+                        # extra work just to keep the control-flow simpler.
+                        continue
+            except (jwt.exceptions.DecodeError, jwt.exceptions.InvalidKeyError):
+                # It wasn't a JWT at all, or it was signed using a key type we
+                # don't support. Fall back to asking the FxA server to verify.
+                pass
+            except jwt.exceptions.Error as e:
+                # Any other JWT-related failure (e.g. expired token) can
+                # immediately surface as a trust error.
+                raise TrustError({"error": str(e)})
             if resp is None or resp[key] is None:
-                resp = self.apiclient.post(`/verify`, {'token': token })
+                resp = self.apiclient.post('/verify', {'token': token })
             missing_attrs = ", ".join([
                 k for k in ('user', 'scope', 'client_id') if k not in resp
             ])
