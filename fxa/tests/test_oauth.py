@@ -4,6 +4,7 @@
 
 import os
 import json
+import jwt
 import responses
 import six
 try:
@@ -612,6 +613,37 @@ class TestGeventPatch(unittest.TestCase):
         self.assertEqual(fxa._utils.requests, grequests)
 
         fxa._utils.requests = old_requests
+
+
+class TestJwtToken(unittest.TestCase):
+
+    server_url = TEST_SERVER_URL
+
+    def setUp(self):
+        self.client = Client(server_url=self.server_url)
+        self.body = ('{"user": "alice", "scope": ["profile"],'
+                     '"client_id": "abc"}')
+        responses.add(responses.POST,
+                      'https://server/v1/verify',
+                      body=self.body,
+                      content_type='application/json')
+        add_jwks_response()
+
+    @responses.activate
+    def test_good_jwt_token(self):
+        pass
+
+    @responses.activate
+    def test_wrong_key_jwt_token(self):
+        pass
+
+    @responses.activate
+    def test_expired_jwt_token(self):
+        pass
+
+    @responses.activate
+    def test_garbage_jwt_token(self):
+        pass
 
 
 class AnyStringValue:
