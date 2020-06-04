@@ -629,21 +629,50 @@ class TestJwtToken(unittest.TestCase):
                       content_type='application/json')
         add_jwks_response()
 
+    def get_file_contents(self, filename):
+        return open(
+            os.path.join(
+                os.path.dirname(__file__),
+                filename
+            )
+        ).read()
+
     @responses.activate
     def test_good_jwt_token(self):
-        pass
+        private_key = self.get_file_contents("private-key.json")
+        result = jwt.encode({}, private_key)
+        self.client.verify_token(result)
 
     @responses.activate
     def test_wrong_key_jwt_token(self):
-        pass
+        bad_key = self.get_file_contents("bad-key.json").read()
+        result = jwt.encode({}, bad_key)
+        try:
+            self.client.verify_token(result)
+        except Exception, e:
+            print e
+            return
+        raise Error("verifying the token signed with the wrong key did not cause an error.")
 
     @responses.activate
     def test_expired_jwt_token(self):
-        pass
+        private_key = self.get_file_contents("private-key.json")
+        result = jwt.encode({"qwer": "asdf", "exp": 0}, private_key)
+        try:
+            self.client.verify_token(result)
+        except Exception, e:
+            print e
+            return
+        raise Error("verifying an expired token did not cause an error.")
 
     @responses.activate
     def test_garbage_jwt_token(self):
-        pass
+        try:
+            self.client.verify_token("garbage")
+        except Exception, e:
+            print e
+            return
+        raise Error("verifying a garbage token did not cause an error.")
 
 
 class AnyStringValue:
