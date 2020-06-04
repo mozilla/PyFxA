@@ -22,11 +22,13 @@ from six.moves.urllib.parse import urlparse, parse_qs
 
 TEST_SERVER_URL = "https://server/v1"
 
+
 def add_jwks_response():
     responses.add(responses.GET,
-                    'https://server/v1/jwks',
-                    body=open(os.path.join(os.path.dirname(__file__), "jwks.json")).read(),
-                    content_type='application/json')
+        'https://server/v1/jwks',
+        body=open(os.path.join(os.path.dirname(__file__), "jwks.json")).read(),
+        content_type='application/json')
+
 
 class TestClientServerUrl(unittest.TestCase):
     def test_trailing_slash_without_prefix_added_prefix(self):
