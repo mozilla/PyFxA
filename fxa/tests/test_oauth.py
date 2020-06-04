@@ -372,6 +372,10 @@ class TestAuthClientAuthorizeToken(unittest.TestCase):
                       'https://server/v1/authorization',
                       body='{"access_token": "izatoken"}',
                       content_type='application/json')
+        responses.add(responses.GET,
+                      'https://server/v1/jwks',
+                      body='{"keys":[{"kty":"RSA","alg":"RS256","kid":"20190730-54ff956e","fxa-createdAt":1564502400,"use":"sig","n":"2lDphW0lNZ4w1m9CfmIhC1AxYG9iwihxBdQZo7_6e0TBAi8_TNaoHHI90G9n5d8BQQnNcF4j2vOs006zlXcqGrP27b49KkN3FmbcOMovvfesMseghaqXqqFLALL9us3Wstt_fV_qV7ceRcJq5Hd_Mq85qUgYSfb9qp0vyePb26KEGy4cwO7c9nCna1a_i5rzUEJu6bAtcLS5obSvmsOOpTLHXojKKOnC4LRC3osdR6AU6v3UObKgJlkk_-8LmPhQZqOXiI_TdBpNiw6G_-eishg8V_poPlAnLNd8mfZBam-_7CdUS4-YoOvJZfYjIoboOuVmUrBjogFyDo72EPTReQ","e":"AQAB"}]}',
+                      content_type='application/json')
 
     @responses.activate
     def test_authorize_token_with_default_arguments(self):
@@ -538,6 +542,10 @@ class TestCachedClient(unittest.TestCase):
         responses.add(responses.POST,
                       'https://server/v1/verify',
                       body=self.body,
+                      content_type='application/json')
+        responses.add(responses.GET,
+                      'https://server/v1/jwks',
+                      body='{"keys":[{"kty":"RSA","alg":"RS256","kid":"20190730-54ff956e","fxa-createdAt":1564502400,"use":"sig","n":"2lDphW0lNZ4w1m9CfmIhC1AxYG9iwihxBdQZo7_6e0TBAi8_TNaoHHI90G9n5d8BQQnNcF4j2vOs006zlXcqGrP27b49KkN3FmbcOMovvfesMseghaqXqqFLALL9us3Wstt_fV_qV7ceRcJq5Hd_Mq85qUgYSfb9qp0vyePb26KEGy4cwO7c9nCna1a_i5rzUEJu6bAtcLS5obSvmsOOpTLHXojKKOnC4LRC3osdR6AU6v3UObKgJlkk_-8LmPhQZqOXiI_TdBpNiw6G_-eishg8V_poPlAnLNd8mfZBam-_7CdUS4-YoOvJZfYjIoboOuVmUrBjogFyDo72EPTReQ","e":"AQAB"}]}',
                       content_type='application/json')
 
     def test_has_default_cache(self):
