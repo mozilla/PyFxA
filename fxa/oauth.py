@@ -274,7 +274,7 @@ class Client(object):
             try:
                 for k in keys:
                     try:
-                        resp = self._verify_jwt_token(k, token)
+                        resp = self._verify_jwt_token(json.dumps(k), token)
                         break
                     except jwt.exceptions.InvalidSignatureError:
                         # It's only worth trying other keys in the event of
@@ -287,7 +287,7 @@ class Client(object):
                 # It wasn't a JWT at all, or it was signed using a key type we
                 # don't support. Fall back to asking the FxA server to verify.
                 pass
-            except jwt.exceptions.Error as e:
+            except jwt.exceptions.PyJWTError as e:
                 # Any other JWT-related failure (e.g. expired token) can
                 # immediately surface as a trust error.
                 raise TrustError({"error": str(e)})

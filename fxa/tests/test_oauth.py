@@ -166,8 +166,13 @@ class TestAuthClientVerifyCode(unittest.TestCase):
                       body=body,
                       content_type='application/json')
 
+        responses.add(responses.GET,
+                      'https://server/v1/jwks',
+                      body='{"keys":[{"kty":"RSA","alg":"RS256","kid":"20190730-54ff956e","fxa-createdAt":1564502400,"use":"sig","n":"2lDphW0lNZ4w1m9CfmIhC1AxYG9iwihxBdQZo7_6e0TBAi8_TNaoHHI90G9n5d8BQQnNcF4j2vOs006zlXcqGrP27b49KkN3FmbcOMovvfesMseghaqXqqFLALL9us3Wstt_fV_qV7ceRcJq5Hd_Mq85qUgYSfb9qp0vyePb26KEGy4cwO7c9nCna1a_i5rzUEJu6bAtcLS5obSvmsOOpTLHXojKKOnC4LRC3osdR6AU6v3UObKgJlkk_-8LmPhQZqOXiI_TdBpNiw6G_-eishg8V_poPlAnLNd8mfZBam-_7CdUS4-YoOvJZfYjIoboOuVmUrBjogFyDo72EPTReQ","e":"AQAB"}]}',
+                      content_type='application/json')
+
         self.verification = self.client.verify_token(token='abc')
-        self.response = responses.calls[0]
+        self.response = responses.calls[1]
 
     def test_reaches_server_on_verify_url(self):
         self.assertEqual(self.response.request.url,
@@ -194,6 +199,10 @@ class TestAuthClientVerifyCode(unittest.TestCase):
                       'https://server/v1/verify',
                       body='{"missing": "attributes"}',
                       content_type='application/json')
+        responses.add(responses.GET,
+                      'https://server/v1/jwks',
+                      body='{"keys":[{"kty":"RSA","alg":"RS256","kid":"20190730-54ff956e","fxa-createdAt":1564502400,"use":"sig","n":"2lDphW0lNZ4w1m9CfmIhC1AxYG9iwihxBdQZo7_6e0TBAi8_TNaoHHI90G9n5d8BQQnNcF4j2vOs006zlXcqGrP27b49KkN3FmbcOMovvfesMseghaqXqqFLALL9us3Wstt_fV_qV7ceRcJq5Hd_Mq85qUgYSfb9qp0vyePb26KEGy4cwO7c9nCna1a_i5rzUEJu6bAtcLS5obSvmsOOpTLHXojKKOnC4LRC3osdR6AU6v3UObKgJlkk_-8LmPhQZqOXiI_TdBpNiw6G_-eishg8V_poPlAnLNd8mfZBam-_7CdUS4-YoOvJZfYjIoboOuVmUrBjogFyDo72EPTReQ","e":"AQAB"}]}',
+                      content_type='application/json')
         self.assertRaises(fxa.errors.OutOfProtocolError,
                           self.client.verify_token,
                           token='1234')
@@ -204,6 +213,10 @@ class TestAuthClientVerifyCode(unittest.TestCase):
         responses.add(responses.POST,
                       'https://server/v1/verify',
                       body=body,
+                      content_type='application/json')
+        responses.add(responses.GET,
+                      'https://server/v1/jwks',
+                      body='{"keys":[{"kty":"RSA","alg":"RS256","kid":"20190730-54ff956e","fxa-createdAt":1564502400,"use":"sig","n":"2lDphW0lNZ4w1m9CfmIhC1AxYG9iwihxBdQZo7_6e0TBAi8_TNaoHHI90G9n5d8BQQnNcF4j2vOs006zlXcqGrP27b49KkN3FmbcOMovvfesMseghaqXqqFLALL9us3Wstt_fV_qV7ceRcJq5Hd_Mq85qUgYSfb9qp0vyePb26KEGy4cwO7c9nCna1a_i5rzUEJu6bAtcLS5obSvmsOOpTLHXojKKOnC4LRC3osdR6AU6v3UObKgJlkk_-8LmPhQZqOXiI_TdBpNiw6G_-eishg8V_poPlAnLNd8mfZBam-_7CdUS4-YoOvJZfYjIoboOuVmUrBjogFyDo72EPTReQ","e":"AQAB"}]}',
                       content_type='application/json')
         self.assertRaises(fxa.errors.ScopeMismatchError,
                           self.client.verify_token,
