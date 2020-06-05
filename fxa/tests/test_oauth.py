@@ -619,60 +619,68 @@ class TestJwtToken(unittest.TestCase):
 
     server_url = TEST_SERVER_URL
 
+    def callback(self, request):
+        if self.verify_success:
+            return (200, {}, self.body)
+        return (500, {}, "{}")
+
     def setUp(self):
         self.client = Client(server_url=self.server_url)
         self.body = ('{"user": "alice", "scope": ["profile"],'
                      '"client_id": "abc"}')
-        responses.add(responses.POST,
+        responses.add_callback(responses.POST,
                       'https://server/v1/verify',
-                      body=self.body,
+                      callback=self.callback,
                       content_type='application/json')
         add_jwks_response()
+        self.verify_success = True
 
     def get_file_contents(self, filename):
-        return open(
+        return jwt.algorithms.RSAAlgorithm.from_jwk(open(
             os.path.join(
                 os.path.dirname(__file__),
                 filename
             )
-        ).read()
+        ).read())
 
     @responses.activate
     def test_good_jwt_token(self):
         private_key = self.get_file_contents("private-key.json")
-        result = jwt.encode({}, private_key)
+        result = jwt.encode({}, private_key, "RS256", {"typ": "at+jwt"})
         self.client.verify_token(result)
 
     @responses.activate
     def test_wrong_key_jwt_token(self):
-        bad_key = self.get_file_contents("bad-key.json").read()
-        result = jwt.encode({}, bad_key)
+        self.verify_success = False
+        bad_key = self.get_file_contents("bad-key.json")
+        result = jwt.encode({}, bad_key, "RS256", {"typ": "at+jwt"})
         try:
             self.client.verify_token(result)
         except Exception, e:
             print e
             return
-        raise Error("verifying the token signed with the wrong key did not cause an error.")
+        raise Exception("verifying the token signed with the wrong key did not cause an error.")
 
     @responses.activate
     def test_expired_jwt_token(self):
         private_key = self.get_file_contents("private-key.json")
-        result = jwt.encode({"qwer": "asdf", "exp": 0}, private_key)
+        result = jwt.encode({"qwer": "asdf", "exp": 0}, private_key, "RS256", {"typ": "at+jwt"})
         try:
             self.client.verify_token(result)
         except Exception, e:
             print e
             return
-        raise Error("verifying an expired token did not cause an error.")
+        raise Exception("verifying an expired token did not cause an error.")
 
     @responses.activate
     def test_garbage_jwt_token(self):
+        self.verify_success = False
         try:
             self.client.verify_token("garbage")
         except Exception, e:
             print e
             return
-        raise Error("verifying a garbage token did not cause an error.")
+        raise Exception("verifying a garbage token did not cause an error.")
 
 
 class AnyStringValue:

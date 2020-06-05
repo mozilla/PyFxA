@@ -291,7 +291,7 @@ class Client(object):
                 # Any other JWT-related failure (e.g. expired token) can
                 # immediately surface as a trust error.
                 raise TrustError({"error": str(e)})
-            if resp is None or resp[key] is None:
+            if resp is None or resp.get(key) is None:
                 resp = self.apiclient.post('/verify', {'token': token})
             missing_attrs = ", ".join([
                 k for k in ('user', 'scope', 'client_id') if k not in resp
