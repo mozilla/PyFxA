@@ -629,9 +629,9 @@ class TestJwtToken(unittest.TestCase):
         self.body = ('{"user": "alice", "scope": ["profile"],'
                      '"client_id": "abc"}')
         responses.add_callback(responses.POST,
-                      'https://server/v1/verify',
-                      callback=self.callback,
-                      content_type='application/json')
+                               'https://server/v1/verify',
+                               callback=self.callback,
+                               content_type='application/json')
         add_jwks_response()
         self.verify_success = True
 
