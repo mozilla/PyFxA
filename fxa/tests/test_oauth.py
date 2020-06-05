@@ -657,7 +657,6 @@ class TestJwtToken(unittest.TestCase):
         try:
             self.client.verify_token(result)
         except Exception as e:
-            print e
             return
         raise Exception("verifying the token signed with the wrong key did not cause an error.")
 
@@ -668,7 +667,6 @@ class TestJwtToken(unittest.TestCase):
         try:
             self.client.verify_token(result)
         except Exception as e:
-            print e
             return
         raise Exception("verifying an expired token did not cause an error.")
 
@@ -677,8 +675,7 @@ class TestJwtToken(unittest.TestCase):
         self.verify_success = False
         try:
             self.client.verify_token("garbage")
-        except Exception, e:
-            print e
+        except Exception as e:
             return
         raise Exception("verifying a garbage token did not cause an error.")
 
