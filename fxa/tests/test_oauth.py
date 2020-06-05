@@ -646,7 +646,7 @@ class TestJwtToken(unittest.TestCase):
     @responses.activate
     def test_good_jwt_token(self):
         private_key = self.get_file_contents("private-key.json")
-        result = jwt.encode({}, private_key, "RS256", {"typ": "at+jwt"})
+        result = str(jwt.encode({}, private_key, "RS256", {"typ": "at+jwt"}))
         self.client.verify_token(result)
 
     @responses.activate
