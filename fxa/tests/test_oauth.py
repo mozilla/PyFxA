@@ -646,7 +646,11 @@ class TestJwtToken(unittest.TestCase):
     @responses.activate
     def test_good_jwt_token(self):
         private_key = self.get_file_contents("private-key.json")
-        result = str(jwt.encode({"sub": "asdf", "scope": "qwer", "client_id": "foo"}, private_key, "RS256", {"typ": "at+jwt"}))
+        result = str(jwt.encode({
+            "sub": "asdf",
+            "scope": "qwer",
+            "client_id": "foo"
+        }, private_key, "RS256", {"typ": "at+jwt"}))
         self.client.verify_token(result)
         for c in responses.calls:
             if c.request.url == 'https://server/v1/verify':
@@ -662,7 +666,8 @@ class TestJwtToken(unittest.TestCase):
             self.client.verify_token(result)
         except Exception:
             return
-        raise Exception("verifying the token signed with the wrong key should have caused an error.")
+        raise Exception("verifying the token signed with the wrong key \
+                         should have caused an error.")
 
     @responses.activate
     def test_expired_jwt_token(self):
@@ -679,7 +684,7 @@ class TestJwtToken(unittest.TestCase):
         self.verify_will_succeed = False
         try:
             self.client.verify_token("garbage")
-        except Exception, e:
+        except Exception:
             for c in responses.calls:
                 if c.request.url == 'https://server/v1/verify':
                     return
