@@ -629,9 +629,9 @@ class TestJwtToken(unittest.TestCase):
         self.body = ('{"user": "alice", "scope": ["profile"],'
                      '"client_id": "abc"}')
         responses.add_callback(responses.POST,
-                      'https://server/v1/verify',
-                      callback=self.callback,
-                      content_type='application/json')
+                               'https://server/v1/verify',
+                               callback=self.callback,
+                               content_type='application/json')
         add_jwks_response()
         self.verify_will_succeed = True
 
@@ -646,7 +646,7 @@ class TestJwtToken(unittest.TestCase):
     @responses.activate
     def test_good_jwt_token(self):
         private_key = self.get_file_contents("private-key.json")
-        result = jwt.encode({}, private_key, "RS256", {"typ": "at+jwt"})
+        result = str(jwt.encode({}, private_key, "RS256", {"typ": "at+jwt"}))
         self.client.verify_token(result)
         for c in responses.calls:
             if c.request.url == 'https://server/v1/verify':
@@ -660,9 +660,9 @@ class TestJwtToken(unittest.TestCase):
         result = jwt.encode({}, bad_key, "RS256", {"typ": "at+jwt"})
         try:
             self.client.verify_token(result)
-        except Exception, e:
+        except Exception:
             return
-        raise Exception("verifying the token signed with the wrong key did not cause an error.")
+        raise Exception("verifying the token signed with the wrong key should have caused an error.")
 
     @responses.activate
     def test_expired_jwt_token(self):
@@ -670,9 +670,9 @@ class TestJwtToken(unittest.TestCase):
         result = jwt.encode({"qwer": "asdf", "exp": 0}, private_key, "RS256", {"typ": "at+jwt"})
         try:
             self.client.verify_token(result)
-        except Exception, e:
+        except Exception:
             return
-        raise Exception("verifying an expired token did not cause an error.")
+        raise Exception("verifying an expired token should have caused an error.")
 
     @responses.activate
     def test_garbage_jwt_token(self):
@@ -685,7 +685,7 @@ class TestJwtToken(unittest.TestCase):
                     return
             raise Exception("testing with a garbage token should have \
                              called /verify, but it did not.")
-        raise Exception("verifying a garbage token did not cause an error.")
+        raise Exception("verifying a garbage token should have caused an error.")
 
 
 class AnyStringValue:
