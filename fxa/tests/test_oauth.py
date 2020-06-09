@@ -622,7 +622,7 @@ class TestJwtToken(unittest.TestCase):
     def callback(self, request):
         if self.verify_will_succeed:
             return (200, {}, self.body)
-        return (500, {}, "{}")
+        return (500, {}, '{}')
 
     def setUp(self):
         self.client = Client(server_url=self.server_url)
@@ -646,7 +646,7 @@ class TestJwtToken(unittest.TestCase):
     @responses.activate
     def test_good_jwt_token(self):
         private_key = self.get_file_contents("private-key.json")
-        result = str(jwt.encode({}, private_key, "RS256", {"typ": "at+jwt"}))
+        result = str(jwt.encode({"sub": "asdf", "scope": "qwer", "client_id": "foo"}, private_key, "RS256", {"typ": "at+jwt"}))
         self.client.verify_token(result)
         for c in responses.calls:
             if c.request.url == 'https://server/v1/verify':

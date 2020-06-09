@@ -292,7 +292,8 @@ class Client(object):
             if resp is None:
                 resp = self.apiclient.post('/verify', {'token': token})
             missing_attrs = ", ".join([
-                k for k in ('user', 'scope', 'client_id') if k not in resp
+                k for k in ('user', 'scope', 'client_id')
+                if resp.get(k) is None
             ])
             if missing_attrs:
                 error_msg = '{0} missing in OAuth response'.format(
