@@ -260,14 +260,13 @@ class Client(object):
             resp = None
 
         if resp is None:
-            # TODO we want to fetch
+            # We want to fetch
             # https://oauth.accounts.firefox.com/.well-known/openid-configuration
             # and then get the jwks_uri key to get the /jwks url, but we'll
-            # just hardcosde it like this for now until we are closer to
-            # production. We need to do this because oauth.accounts.firefox.com
-            # does not yet respond to .well-known, but accounts.firefox.com
-            # does; for consistency, oauth.accounts.firefox.com should respond
-            # to .well-known.
+            # just hardcodes it like this for now; our /jwks url will never
+            # change.
+            # https://github.com/mozilla/PyFxA/issues/81 is an issue about
+            # getting the jwks url out of the openid-configuration.
 
             keys = self.apiclient.get('/jwks').get('keys', [])
             resp = None
@@ -280,8 +279,7 @@ class Client(object):
                         # It's only worth trying other keys in the event of
                         # `InvalidSignature`; if it was invalid for other reasons
                         # (e.g. it's expired) then using a different key won't
-                        # help. OTOH you might prefer to let the server do a bit of
-                        # extra work just to keep the control-flow simpler.
+                        # help.
                         continue
             except (jwt.exceptions.DecodeError, jwt.exceptions.InvalidKeyError):
                 # It wasn't a JWT at all, or it was signed using a key type we

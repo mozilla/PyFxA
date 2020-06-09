@@ -658,7 +658,7 @@ class TestJwtToken(unittest.TestCase):
             self.client.verify_token(result)
         except Exception:
             return
-        raise Exception("verifying the token signed with the wrong key did not cause an error.")
+        raise Exception("verifying the token signed with the wrong key should have caused an error.")
 
     @responses.activate
     def test_expired_jwt_token(self):
@@ -668,7 +668,7 @@ class TestJwtToken(unittest.TestCase):
             self.client.verify_token(result)
         except Exception:
             return
-        raise Exception("verifying an expired token did not cause an error.")
+        raise Exception("verifying an expired token should have caused an error.")
 
     @responses.activate
     def test_garbage_jwt_token(self):
@@ -677,7 +677,7 @@ class TestJwtToken(unittest.TestCase):
             self.client.verify_token("garbage")
         except Exception:
             return
-        raise Exception("verifying a garbage token did not cause an error.")
+        raise Exception("verifying a garbage token should have caused an error.")
 
 
 class AnyStringValue:
