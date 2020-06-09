@@ -620,7 +620,7 @@ class TestJwtToken(unittest.TestCase):
     server_url = TEST_SERVER_URL
 
     def callback(self, request):
-        if self.verify_success:
+        if self.verify_will_succeed:
             return (200, {}, self.body)
         return (500, {}, "{}")
 
@@ -633,7 +633,7 @@ class TestJwtToken(unittest.TestCase):
                       callback=self.callback,
                       content_type='application/json')
         add_jwks_response()
-        self.verify_success = True
+        self.verify_will_succeed = True
 
     def get_file_contents(self, filename):
         return jwt.algorithms.RSAAlgorithm.from_jwk(open(
@@ -648,16 +648,19 @@ class TestJwtToken(unittest.TestCase):
         private_key = self.get_file_contents("private-key.json")
         result = jwt.encode({}, private_key, "RS256", {"typ": "at+jwt"})
         self.client.verify_token(result)
+        for c in responses.calls:
+            if c.request.url == 'https://server/v1/verify':
+                raise Exception("testing with a good token should not have \
+                                 resulted in a call to /verify, but it did.")
 
     @responses.activate
     def test_wrong_key_jwt_token(self):
-        self.verify_success = False
+        self.verify_will_succeed = False
         bad_key = self.get_file_contents("bad-key.json")
         result = jwt.encode({}, bad_key, "RS256", {"typ": "at+jwt"})
         try:
             self.client.verify_token(result)
         except Exception, e:
-            print e
             return
         raise Exception("verifying the token signed with the wrong key did not cause an error.")
 
@@ -668,18 +671,20 @@ class TestJwtToken(unittest.TestCase):
         try:
             self.client.verify_token(result)
         except Exception, e:
-            print e
             return
         raise Exception("verifying an expired token did not cause an error.")
 
     @responses.activate
     def test_garbage_jwt_token(self):
-        self.verify_success = False
+        self.verify_will_succeed = False
         try:
             self.client.verify_token("garbage")
         except Exception, e:
-            print e
-            return
+            for c in responses.calls:
+                if c.request.url == 'https://server/v1/verify':
+                    return
+            raise Exception("testing with a garbage token should have \
+                             called /verify, but it did not.")
         raise Exception("verifying a garbage token did not cause an error.")
 
 
