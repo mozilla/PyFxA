@@ -9,9 +9,10 @@ import hashlib
 from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
+import jwt
 from fxa.cache import MemoryCache, DEFAULT_CACHE_EXPIRY
 from fxa.constants import PRODUCTION_URLS
-from fxa.errors import OutOfProtocolError, ScopeMismatchError
+from fxa.errors import OutOfProtocolError, ScopeMismatchError, TrustError
 from fxa._utils import APIClient, scope_matches, get_hmac
 
 
@@ -222,6 +223,26 @@ class Client(object):
 
         return resp['access_token']
 
+    def _verify_jwt_token(self, key, token):
+        pubkey = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+        # The FxA OAuth ecosystem currently doesn't make good use of aud, and
+        # instead relies on scope for restricting which services can accept
+        # which tokens. So there's no value in checking it here, and in fact if
+        # we check it here, it fails because the right audience isn't being
+        # requested.
+        decoded = jwt.decode(
+            token, pubkey, algorithms=['RS256'], options={'verify_aud': False}
+        )
+        if jwt.get_unverified_header(token).get('typ') != 'at+jwt':
+            raise TrustError
+        return {
+            'user': decoded.get('sub'),
+            'client_id': decoded.get('client_id'),
+            'scope': decoded.get('scope'),
+            'generation': decoded.get('fxa-generation'),
+            'profile_changed_at': decoded.get('fxa-profileChangedAt')
+        }
+
     def verify_token(self, token, scope=None):
         """Verify an OAuth token, and retrieve user id and scopes.
 
@@ -239,14 +260,45 @@ class Client(object):
             resp = None
 
         if resp is None:
-            url = '/verify'
-            body = {
-                'token': token
-            }
-            resp = self.apiclient.post(url, body)
+            # We want to fetch
+            # https://oauth.accounts.firefox.com/.well-known/openid-configuration
+            # and then get the jwks_uri key to get the /jwks url, but we'll
+            # just hardcodes it like this for now; our /jwks url will never
+            # change.
+            # https://github.com/mozilla/PyFxA/issues/81 is an issue about
+            # getting the jwks url out of the openid-configuration.
 
+            keys = self.apiclient.get('/jwks').get('keys', [])
+            resp = None
+            try:
+                for k in keys:
+                    try:
+                        resp = self._verify_jwt_token(json.dumps(k), token)
+                        break
+                    except jwt.exceptions.InvalidSignatureError:
+                        # It's only worth trying other keys in the event of
+                        # `InvalidSignature`; if it was invalid for other reasons
+                        # (e.g. it's expired) then using a different key won't
+                        # help.
+                        continue
+                else:
+                    # It's a well-formed JWT, but not signed by any of the advertized keys.
+                    # We can immediately surface this as an error.
+                    if len(keys) > 0:
+                        raise TrustError({"error": "invalid signature"})
+            except (jwt.exceptions.DecodeError, jwt.exceptions.InvalidKeyError):
+                # It wasn't a JWT at all, or it was signed using a key type we
+                # don't support. Fall back to asking the FxA server to verify.
+                pass
+            except jwt.exceptions.PyJWTError as e:
+                # Any other JWT-related failure (e.g. expired token) can
+                # immediately surface as a trust error.
+                raise TrustError({"error": str(e)})
+            if resp is None:
+                resp = self.apiclient.post('/verify', {'token': token})
             missing_attrs = ", ".join([
-                k for k in ('user', 'scope', 'client_id') if k not in resp
+                k for k in ('user', 'scope', 'client_id')
+                if resp.get(k) is None
             ])
             if missing_attrs:
                 error_msg = '{0} missing in OAuth response'.format(

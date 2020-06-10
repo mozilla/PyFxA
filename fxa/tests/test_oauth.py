@@ -2,7 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import os
 import json
+import jwt
 import responses
 import six
 try:
@@ -20,6 +22,13 @@ from six.moves.urllib.parse import urlparse, parse_qs
 
 
 TEST_SERVER_URL = "https://server/v1"
+
+
+def add_jwks_response():
+    responses.add(responses.GET,
+                  'https://server/v1/jwks',
+                  body=open(os.path.join(os.path.dirname(__file__), "jwks.json")).read(),
+                  content_type='application/json')
 
 
 class TestClientServerUrl(unittest.TestCase):
@@ -165,9 +174,9 @@ class TestAuthClientVerifyCode(unittest.TestCase):
                       'https://server/v1/verify',
                       body=body,
                       content_type='application/json')
-
+        add_jwks_response()
         self.verification = self.client.verify_token(token='abc')
-        self.response = responses.calls[0]
+        self.response = responses.calls[1]
 
     def test_reaches_server_on_verify_url(self):
         self.assertEqual(self.response.request.url,
@@ -194,6 +203,7 @@ class TestAuthClientVerifyCode(unittest.TestCase):
                       'https://server/v1/verify',
                       body='{"missing": "attributes"}',
                       content_type='application/json')
+        add_jwks_response()
         self.assertRaises(fxa.errors.OutOfProtocolError,
                           self.client.verify_token,
                           token='1234')
@@ -205,6 +215,7 @@ class TestAuthClientVerifyCode(unittest.TestCase):
                       'https://server/v1/verify',
                       body=body,
                       content_type='application/json')
+        add_jwks_response()
         self.assertRaises(fxa.errors.ScopeMismatchError,
                           self.client.verify_token,
                           token='1234',
@@ -372,6 +383,7 @@ class TestAuthClientAuthorizeToken(unittest.TestCase):
                       'https://server/v1/authorization',
                       body='{"access_token": "izatoken"}',
                       content_type='application/json')
+        add_jwks_response()
 
     @responses.activate
     def test_authorize_token_with_default_arguments(self):
@@ -539,6 +551,7 @@ class TestCachedClient(unittest.TestCase):
                       'https://server/v1/verify',
                       body=self.body,
                       content_type='application/json')
+        add_jwks_response()
 
     def test_has_default_cache(self):
         self.assertIsNotNone(self.client.cache)
@@ -600,6 +613,84 @@ class TestGeventPatch(unittest.TestCase):
         self.assertEqual(fxa._utils.requests, grequests)
 
         fxa._utils.requests = old_requests
+
+
+class TestJwtToken(unittest.TestCase):
+
+    server_url = TEST_SERVER_URL
+
+    def callback(self, request):
+        if self.verify_will_succeed:
+            return (200, {}, self.body)
+        return (500, {}, '{}')
+
+    def _make_jwt(self, payload, key, alg="RS256", header={"typ": "at+jwt"}):
+        header = header.copy()  # So we don't accidentally mutate argument in-place
+        return six.ensure_text(jwt.encode(payload, key, alg, header))
+
+    def setUp(self):
+        self.client = Client(server_url=self.server_url)
+        self.body = ('{"user": "alice", "scope": ["profile"],'
+                     '"client_id": "abc"}')
+        responses.add_callback(responses.POST,
+                               'https://server/v1/verify',
+                               callback=self.callback,
+                               content_type='application/json')
+        add_jwks_response()
+        self.verify_will_succeed = True
+
+    def get_file_contents(self, filename):
+        return jwt.algorithms.RSAAlgorithm.from_jwk(open(
+            os.path.join(
+                os.path.dirname(__file__),
+                filename
+            )
+        ).read())
+
+    @responses.activate
+    def test_good_jwt_token(self):
+        private_key = self.get_file_contents("private-key.json")
+        token = self._make_jwt({
+            "sub": "asdf",
+            "scope": "qwer",
+            "client_id": "foo"
+        }, private_key)
+        self.client.verify_token(token)
+        for c in responses.calls:
+            if c.request.url == 'https://server/v1/verify':
+                raise Exception("testing with a good token should not have \
+                                 resulted in a call to /verify, but it did.")
+
+    @responses.activate
+    def test_wrong_key_jwt_token(self):
+        self.verify_will_succeed = False
+        bad_key = self.get_file_contents("bad-key.json")
+        token = self._make_jwt({}, bad_key)
+        with self.assertRaises(fxa.errors.TrustError):
+            self.client.verify_token(token)
+        for c in responses.calls:
+            if c.request.url == 'https://server/v1/verify':
+                raise Exception("testing with a well-formed token with invalid signature \
+                                 should not have resulted in a call to /verify, but it did.")
+
+    @responses.activate
+    def test_expired_jwt_token(self):
+        private_key = self.get_file_contents("private-key.json")
+        token = self._make_jwt({"qwer": "asdf", "exp": 0}, private_key)
+        with self.assertRaises(fxa.errors.TrustError):
+            self.client.verify_token(token)
+
+    @responses.activate
+    def test_garbage_jwt_token(self):
+        self.verify_will_succeed = False
+        with self.assertRaises(fxa.errors.ServerError):
+            self.client.verify_token("garbage")
+        for c in responses.calls:
+            if c.request.url == 'https://server/v1/verify':
+                break
+        else:
+            raise Exception("testing with a garbage token should have \
+                             called /verify, but it did not.")
 
 
 class AnyStringValue:

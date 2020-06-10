@@ -28,8 +28,9 @@ REQUIREMENTS = [
     "requests>=2.4.2",
     "cryptography",
     "PyBrowserID",
+    "PyJWT",
     "hawkauthlib",
-    "six"
+    "six>=1.14"
 ]
 
 if sys.version_info < (2, 7, 9):
