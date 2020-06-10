@@ -281,6 +281,11 @@ class Client(object):
                         # (e.g. it's expired) then using a different key won't
                         # help.
                         continue
+                else:
+                    # It's a well-formed JWT, but not signed by any of the advertized keys.
+                    # We can immediately surface this as an error.
+                    if len(keys) > 0:
+                        raise TrustError({"error": "invalid signature"})
             except (jwt.exceptions.DecodeError, jwt.exceptions.InvalidKeyError):
                 # It wasn't a JWT at all, or it was signed using a key type we
                 # don't support. Fall back to asking the FxA server to verify.

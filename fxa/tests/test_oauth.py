@@ -624,6 +624,10 @@ class TestJwtToken(unittest.TestCase):
             return (200, {}, self.body)
         return (500, {}, '{}')
 
+    def _make_jwt(self, payload, key, alg="RS256", header={"typ": "at+jwt"}):
+        header = header.copy()  # So we don't accidentally mutate argument in-place
+        return six.ensure_text(jwt.encode(payload, key, alg, header))
+
     def setUp(self):
         self.client = Client(server_url=self.server_url)
         self.body = ('{"user": "alice", "scope": ["profile"],'
@@ -646,12 +650,12 @@ class TestJwtToken(unittest.TestCase):
     @responses.activate
     def test_good_jwt_token(self):
         private_key = self.get_file_contents("private-key.json")
-        result = str(jwt.encode({
+        token = self._make_jwt({
             "sub": "asdf",
             "scope": "qwer",
             "client_id": "foo"
-        }, private_key, "RS256", {"typ": "at+jwt"}))
-        self.client.verify_token(result)
+        }, private_key)
+        self.client.verify_token(token)
         for c in responses.calls:
             if c.request.url == 'https://server/v1/verify':
                 raise Exception("testing with a good token should not have \
@@ -661,36 +665,32 @@ class TestJwtToken(unittest.TestCase):
     def test_wrong_key_jwt_token(self):
         self.verify_will_succeed = False
         bad_key = self.get_file_contents("bad-key.json")
-        result = jwt.encode({}, bad_key, "RS256", {"typ": "at+jwt"})
-        try:
-            self.client.verify_token(result)
-        except Exception:
-            return
-        raise Exception("verifying the token signed with the wrong key \
-                         should have caused an error.")
+        token = self._make_jwt({}, bad_key)
+        with self.assertRaises(fxa.errors.TrustError):
+            self.client.verify_token(token)
+        for c in responses.calls:
+            if c.request.url == 'https://server/v1/verify':
+                raise Exception("testing with a well-formed token with invalid signature \
+                                 should not have resulted in a call to /verify, but it did.")
 
     @responses.activate
     def test_expired_jwt_token(self):
         private_key = self.get_file_contents("private-key.json")
-        result = jwt.encode({"qwer": "asdf", "exp": 0}, private_key, "RS256", {"typ": "at+jwt"})
-        try:
-            self.client.verify_token(result)
-        except Exception:
-            return
-        raise Exception("verifying an expired token should have caused an error.")
+        token = self._make_jwt({"qwer": "asdf", "exp": 0}, private_key)
+        with self.assertRaises(fxa.errors.TrustError):
+            self.client.verify_token(token)
 
     @responses.activate
     def test_garbage_jwt_token(self):
         self.verify_will_succeed = False
-        try:
+        with self.assertRaises(fxa.errors.ServerError):
             self.client.verify_token("garbage")
-        except Exception:
-            for c in responses.calls:
-                if c.request.url == 'https://server/v1/verify':
-                    return
+        for c in responses.calls:
+            if c.request.url == 'https://server/v1/verify':
+                break
+        else:
             raise Exception("testing with a garbage token should have \
                              called /verify, but it did not.")
-        raise Exception("verifying a garbage token should have caused an error.")
 
 
 class AnyStringValue:
