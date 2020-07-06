@@ -3,8 +3,8 @@ CHANGELOG
 
 This document describes changes between each past release.
 
-PENDING
-=======
+0.7.5 (2020-07-06)
+==================
 
 - Add support for `reason` and `verification_method` keyword arguments
   to the `login` method.
