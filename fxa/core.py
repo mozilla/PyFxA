@@ -74,11 +74,13 @@ class Client(object):
             auth_timestamp=resp["authAt"],
         )
 
-    def login(self, email, password=None, stretchpwd=None, keys=False, unblock_code=None):
+    def login(self, email, password=None, stretchpwd=None, keys=False, unblock_code=None,
+              verification_method=None, reason="login"):
         stretchpwd = self._get_stretched_password(email, password, stretchpwd)
         body = {
             "email": email,
             "authPW": hexstr(derive_key(stretchpwd, "authPW")),
+            "reason": reason,
         }
         url = "/account/login"
         if keys:
@@ -86,6 +88,8 @@ class Client(object):
 
         if unblock_code:
             body["unblockCode"] = unblock_code
+        if verification_method:
+            body["verificationMethod"] = verification_method
 
         resp = self.apiclient.post(url, body)
         # XXX TODO: somehow sanity-check the schema on this endpoint
