@@ -233,7 +233,12 @@ class Client(object):
         decoded = jwt.decode(
             token, pubkey, algorithms=['RS256'], options={'verify_aud': False}
         )
-        if jwt.get_unverified_header(token).get('typ') != 'at+jwt':
+        # Ref https://tools.ietf.org/html/rfc7515#section-4.1.9 the `typ` header
+        # is lowercase and has an implicit default `application/` prefix.
+        typ = jwt.get_unverified_header(token).get('typ', '')
+        if '/' not in typ:
+            typ = 'application/' + typ
+        if typ.lower() != 'application/at+jwt':
             raise TrustError
         return {
             'user': decoded.get('sub'),
