@@ -267,8 +267,12 @@ class Client(object):
             # change.
             # https://github.com/mozilla/PyFxA/issues/81 is an issue about
             # getting the jwks url out of the openid-configuration.
-
-            keys = self.apiclient.get('/jwks').get('keys', [])
+            keys = []
+            pyfxa_jwks = os.getenv("PYFXA_JWKS", None)
+            if pyfxa_jwks is not None:
+                keys.append(json.loads(pyfxa_jwks))
+            else:
+                keys.extend(self.apiclient.get('/jwks').get('keys', []))
             resp = None
             try:
                 for k in keys:
