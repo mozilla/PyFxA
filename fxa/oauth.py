@@ -25,7 +25,7 @@ class Client(object):
     """Client for talking to the Firefox Accounts OAuth server"""
 
     def __init__(self, client_id=None, client_secret=None, server_url=None,
-                 cache=True, ttl=DEFAULT_CACHE_EXPIRY):
+                 cache=True, ttl=DEFAULT_CACHE_EXPIRY, jwks=None):
         self.client_id = client_id
         self.client_secret = client_secret
         if server_url is None:
@@ -41,6 +41,7 @@ class Client(object):
         self.cache = cache
         if self.cache is True:
             self.cache = MemoryCache(ttl)
+        self.jwks = jwks
 
     @property
     def server_url(self):
@@ -272,8 +273,11 @@ class Client(object):
             # change.
             # https://github.com/mozilla/PyFxA/issues/81 is an issue about
             # getting the jwks url out of the openid-configuration.
-
-            keys = self.apiclient.get('/jwks').get('keys', [])
+            keys = []
+            if self.jwks is not None:
+                keys.extend(self.jwks)
+            else:
+                keys.extend(self.apiclient.get('/jwks').get('keys', []))
             resp = None
             try:
                 for k in keys:
