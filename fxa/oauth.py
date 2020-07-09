@@ -270,7 +270,7 @@ class Client(object):
             # getting the jwks url out of the openid-configuration.
             keys = []
             if self.jwks is not None:
-                keys.append(self.jwks)
+                keys.extend(self.jwks)
             else:
                 keys.extend(self.apiclient.get('/jwks').get('keys', []))
             resp = None
