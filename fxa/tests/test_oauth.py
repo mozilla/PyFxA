@@ -662,6 +662,43 @@ class TestJwtToken(unittest.TestCase):
                                  resulted in a call to /verify, but it did.")
 
     @responses.activate
+    def test_good_jwt_token_with_long_form_typ_header(self):
+        private_key = self.get_file_contents("private-key.json")
+        token = self._make_jwt({
+            "sub": "asdf",
+            "scope": "qwer",
+            "client_id": "foo"
+        }, private_key, header={
+            "typ": "application/at+JWT",
+        })
+        self.client.verify_token(token)
+        for c in responses.calls:
+            if c.request.url == 'https://server/v1/verify':
+                raise Exception("testing with a good token should not have \
+                                 resulted in a call to /verify, but it did.")
+
+    @responses.activate
+    def test_good_jwt_token_with_correct_scope(self):
+        private_key = self.get_file_contents("private-key.json")
+        token = self._make_jwt({
+            "sub": "asdf",
+            "scope": "qwer tee",
+            "client_id": "foo"
+        }, private_key)
+        self.client.verify_token(token, scope="tee")
+
+    @responses.activate
+    def test_good_jwt_token_with_incorrect_scope(self):
+        private_key = self.get_file_contents("private-key.json")
+        token = self._make_jwt({
+            "sub": "asdf",
+            "scope": "qwer",
+            "client_id": "foo"
+        }, private_key)
+        with self.assertRaises(fxa.errors.TrustError):
+            self.client.verify_token(token, scope="tee")
+
+    @responses.activate
     def test_wrong_key_jwt_token(self):
         self.verify_will_succeed = False
         bad_key = self.get_file_contents("bad-key.json")
@@ -677,6 +714,15 @@ class TestJwtToken(unittest.TestCase):
     def test_expired_jwt_token(self):
         private_key = self.get_file_contents("private-key.json")
         token = self._make_jwt({"qwer": "asdf", "exp": 0}, private_key)
+        with self.assertRaises(fxa.errors.TrustError):
+            self.client.verify_token(token)
+
+    @responses.activate
+    def test_jwt_token_with_wrong_typ(self):
+        private_key = self.get_file_contents("private-key.json")
+        token = self._make_jwt({"qwer": "asdf", "exp": 0}, private_key, header={
+          "typ": "rt+jwt"
+        })
         with self.assertRaises(fxa.errors.TrustError):
             self.client.verify_token(token)
 
