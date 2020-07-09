@@ -41,6 +41,11 @@ class Client(object):
         self.cache = cache
         if self.cache is True:
             self.cache = MemoryCache(ttl)
+
+        if jwks is not None:
+            # Fail early if bad JWKs were provided.
+            for key in jwks:
+                jwt.algorithms.RSAAlgorithm.from_jwk(key)
         self.jwks = jwks
 
     @property
