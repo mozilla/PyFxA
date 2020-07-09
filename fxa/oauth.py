@@ -243,7 +243,7 @@ class Client(object):
         return {
             'user': decoded.get('sub'),
             'client_id': decoded.get('client_id'),
-            'scope': decoded.get('scope'),
+            'scope': decoded.get('scope', '').split(),
             'generation': decoded.get('fxa-generation'),
             'profile_changed_at': decoded.get('fxa-profileChangedAt')
         }

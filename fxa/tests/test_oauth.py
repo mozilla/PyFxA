@@ -678,6 +678,27 @@ class TestJwtToken(unittest.TestCase):
                                  resulted in a call to /verify, but it did.")
 
     @responses.activate
+    def test_good_jwt_token_with_correct_scope(self):
+        private_key = self.get_file_contents("private-key.json")
+        token = self._make_jwt({
+            "sub": "asdf",
+            "scope": "qwer tee",
+            "client_id": "foo"
+        }, private_key)
+        self.client.verify_token(token, scope="tee")
+
+    @responses.activate
+    def test_good_jwt_token_with_incorrect_scope(self):
+        private_key = self.get_file_contents("private-key.json")
+        token = self._make_jwt({
+            "sub": "asdf",
+            "scope": "qwer",
+            "client_id": "foo"
+        }, private_key)
+        with self.assertRaises(fxa.errors.TrustError):
+            self.client.verify_token(token, scope="tee")
+
+    @responses.activate
     def test_wrong_key_jwt_token(self):
         self.verify_will_succeed = False
         bad_key = self.get_file_contents("bad-key.json")

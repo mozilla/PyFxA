@@ -78,6 +78,9 @@ def scope_matches(provided, required):
     :param required: the scope required (e.g. by the application).
     :returns: ``True`` if all required scopes are provided, ``False`` if not.
     """
+    if isinstance(provided, six.string_types):
+        raise ValueError("Provided scopes must be a list, not a single string")
+
     if not isinstance(required, (list, tuple)):
         required = [required]
 
