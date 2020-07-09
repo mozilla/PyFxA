@@ -3,6 +3,18 @@ CHANGELOG
 
 This document describes changes between each past release.
 
+0.7.6 (2020-07-10)
+==================
+
+- Add ability to configure a fixed list of JWT access token keys,
+  by passing them as an argument to `oauth.Client()` rather than
+  fetching them at runtime from the server.
+- Fix verification of JWT access token `typ` header.
+  (Thankfully it was failing closed rather than failing open).
+- Fix verification of `scope` list obtained from a JWT access token.
+  (Thankfully it was failing closed rather than failing open).
+
+
 0.7.5 (2020-07-06)
 ==================
 
