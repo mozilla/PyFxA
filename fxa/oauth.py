@@ -45,7 +45,7 @@ class Client(object):
         if jwks is not None:
             # Fail early if bad JWKs were provided.
             for key in jwks:
-                jwt.algorithms.RSAAlgorithm.from_jwk(key)
+                jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(key))
         self.jwks = jwks
 
     @property
