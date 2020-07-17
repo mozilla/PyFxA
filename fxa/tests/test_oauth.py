@@ -738,6 +738,24 @@ class TestJwtToken(unittest.TestCase):
             raise Exception("testing with a garbage token should have \
                              called /verify, but it did not.")
 
+    def test_jwks_param_validation(self):
+        client = Client(server_url=self.server_url, jwks=[])
+        self.assertEqual(client.jwks, [])
+
+        jwks_file = os.path.join(os.path.dirname(__file__), "jwks.json")
+        jwks = json.loads(open(jwks_file).read())["keys"]
+        client = Client(server_url=self.server_url, jwks=jwks)
+        self.assertEqual(client.jwks, jwks)
+
+        jwks.append("this is not the JWK you're looking for")
+        with self.assertRaises(AttributeError):
+            Client(server_url=self.server_url, jwks=jwks)
+
+        jwks.pop()
+        jwks[0]["kty"] = "InvalidKty"
+        with self.assertRaises(jwt.exceptions.InvalidKeyError):
+            Client(server_url=self.server_url, jwks=jwks)
+
 
 class AnyStringValue:
 
