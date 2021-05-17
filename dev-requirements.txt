@@ -5,4 +5,5 @@ pytest==4.6.4
 pytest-runner==4.5.1
 pytest-cov
 pytest-flake8
-pyotp
+# Latest releases of pyotp do not support python2.
+pyotp==2.3.0
