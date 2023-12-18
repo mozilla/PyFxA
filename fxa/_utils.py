@@ -29,6 +29,8 @@ import requests
 import requests.auth
 import requests.utils
 import hawkauthlib
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 
 import fxa
 import fxa.errors
@@ -157,6 +159,13 @@ class APIClient(object):
     def __init__(self, server_url, session=None):
         if session is None:
             session = requests.Session()
+            # Mount an HTTPAdapter to retry requests.
+            retries = Retry(
+                total=3,
+                backoff_factor=0.5,
+                allowed_methods={"DELETE", "GET", "POST", "PUT"},
+            )
+            session.mount(server_url, HTTPAdapter(max_retries=retries))
         # Properties that can be customized to change behaviour.
         self.server_url = server_url
         self.timeout = 30
