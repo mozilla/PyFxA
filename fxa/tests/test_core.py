@@ -7,6 +7,7 @@ from six import binary_type
 from six.moves.urllib.parse import urlparse
 
 import pyotp
+import pytest
 
 from browserid import jwt
 import browserid.tests.support
@@ -28,7 +29,7 @@ from fxa.tests.utils import (
 # XXX TODO: this currently talks to a live server by default.
 # It's nice to have such an option, but we shouldn't hit the network
 # for every test run.  Instead let's build a mock server and use that.
-TEST_SERVER_URL = "https://stable.dev.lcip.org/auth"
+TEST_SERVER_URL = "https://api-accounts.stage.mozaws.net/v1/"
 
 
 class TestCoreClient(unittest.TestCase):
@@ -97,6 +98,7 @@ class TestCoreClient(unittest.TestCase):
         self.assertTrue(isinstance(b1, binary_type))
         self.assertNotEqual(b1, b2)
 
+    @pytest.mark.skip(reason="This tests keeps getting rate limited....")
     def test_resend_verify_code(self):
         acct = TestEmailAccount()
         session = self.client.create_account(
@@ -178,6 +180,7 @@ class TestCoreClient(unittest.TestCase):
                                                  m["headers"]["x-verify-code"])
         self.assertEqual(response, {})
 
+    @pytest.mark.skip(reason="This endpoint is no longer supported.")
     def test_send_unblock_code(self):
         acct = TestEmailAccount(email="block-{uniq}@{hostname}")
         self.client.create_account(
@@ -265,6 +268,7 @@ class TestCoreClientSession(unittest.TestCase):
         self.assertTrue(isinstance(b1, binary_type))
         self.assertNotEqual(b1, b2)
 
+    @pytest.mark.skip(reason="This endpoint is no longer supported.")
     def test_sign_certificate(self):
         email = self.acct.email
         pubkey = browserid.tests.support.get_keypair(email)[0]
@@ -273,6 +277,7 @@ class TestCoreClientSession(unittest.TestCase):
         expected_issuer = urlparse(self.client.server_url).hostname
         self.assertEqual(issuer, expected_issuer)
 
+    @pytest.mark.skip(reason="This endpoint is no longer supported.")
     def test_sign_certificate_handles_duration(self):
         email = self.acct.email
         pubkey = browserid.tests.support.get_keypair(email)[0]
@@ -304,6 +309,7 @@ class TestCoreClientSession(unittest.TestCase):
         session2.fetch_keys()
         self.assertEqual(self.session.keys, session2.keys)
 
+    @pytest.mark.skip(reason="This endpoint is no longer supported.")
     def test_get_identity_assertion(self):
         assertion = self.session.get_identity_assertion("http://example.com")
         data = browserid.verify(assertion, audience="http://example.com")
@@ -313,6 +319,7 @@ class TestCoreClientSession(unittest.TestCase):
         expected_email = "{0}@{1}".format(self.session.uid, expected_issuer)
         self.assertEqual(data["email"], expected_email)
 
+    @pytest.mark.skip(reason="This endpoint is no longer supported.")
     def test_get_identity_assertion_handles_duration(self):
         millis = int(round(time.time() * 1000))
         bid_assertion = self.session.get_identity_assertion(
@@ -332,6 +339,7 @@ class TestCoreClientSession(unittest.TestCase):
         self.assertGreaterEqual(ttl, 1230)
         self.assertLessEqual(ttl, 1260)
 
+    @pytest.mark.skip(reason="This endpoint is no longer supported.")
     def test_get_identity_assertion_accepts_service(self):
         # We can't observe any side-effects of sending the service query param,
         # but we can test that it doesn't error out.

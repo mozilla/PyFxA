@@ -1,23 +1,23 @@
 ===========================================================
-PyFxA: Python library for interacting with Firefox Accounts
+PyFxA: Python library for interacting with Mozilla Accounts
 ===========================================================
 
 .. image:: https://travis-ci.org/mozilla/PyFxA.svg?branch=master
     :target: https://travis-ci.org/mozilla/PyFxA
 
-This is python library for interacting with the Firefox Accounts ecosystem.
+This is python library for interacting with the Mozilla Accounts (formerly known as the Firefox Accounts) ecosystem.
 
 Eventually, it is planned to provide easy support for the following features:
 
-* being a direct firefox accounts authentication client
+* being a direct mozilla accounts authentication client
 * being an FxA OAuth Service Provider
 * accessing attached services
-* helps interactions with Firefox Account servers wiht requests Authentication plugins.
+* helps interactions with Firefox Account servers with requests Authentication plugins.
 
 But none of that is ready yet; caveat emptor.
 
 
-Firefox Accounts
+Mozilla Accounts
 ================
 
 Currently, basic auth-server operations should work like so:
@@ -301,3 +301,21 @@ token request:
         (default to: https://api.accounts.firefox.com/v1)
       - FXA_OAUTH_SERVER_URL: To select the oauth server url
         (default to: https://oauth.accounts.firefox.com/v1)
+
+
+
+=====================
+Contributing to PyFxA
+=====================
+
+The basic requirements are:
+- Python 3.12.2 or higher
+- Pip 24.0
+
+To get start: `python -m pip install -r dev-requirements.txt`
+
+Then run tests: `pytest`
+
+
+
+

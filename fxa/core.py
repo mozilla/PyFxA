@@ -124,8 +124,9 @@ class Client(object):
             "email": email,
             "authPW": hexstr(derive_key(stretchpwd, "authPW")),
         }
+        session = self.login(email, password, stretchpwd, keys=True)
         url = "/account/destroy"
-        self.apiclient.post(url, body)
+        self.apiclient.post(url, body, auth=session._auth)
 
     def get_random_bytes(self):
         # XXX TODO: sanity-check the schema of the returned response
