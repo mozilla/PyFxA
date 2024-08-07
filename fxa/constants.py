@@ -17,11 +17,11 @@ ENVIRONMENT_URLS = {
         "token": "https://token.stage.mozaws.net/",
     },
     "stable": {
-        "authentication": "https://stable.dev.lcip.org/auth/v1",
-        "oauth": "https://oauth-stable.dev.lcip.org/v1",
-        "content": "https://stable.dev.lcip.org/",
-        "profile": "https://stable.dev.lcip.org/profile/v1",
-        "token": None,
+        "authentication": "https://api-accounts.stage.mozaws.net/v1",
+        "oauth": "https://oauth.stage.mozaws.net/v1",
+        "content": "https://accounts.stage.mozaws.net/",
+        "profile": "https://profile.stage.mozaws.net/v1",
+        "token": "https://token.stage.mozaws.net/",
     }
 }
 

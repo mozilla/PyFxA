@@ -8,13 +8,6 @@ workflows:
   test:
     jobs:
       - python/test:
-          name: "Test on Python 2.7"
-          version: "2.7"
-          pkg-manager: pip-dist
-          args: "-r dev-requirements.txt"
-          pip-dependency-file: "dev-requirements.txt"
-          test-tool: pytest
-      - python/test:
           name: "Test on Python 3.8"
           version: "3.8"
           pkg-manager: pip-dist

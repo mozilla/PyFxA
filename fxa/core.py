@@ -2,21 +2,29 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from binascii import unhexlify
-
+from binascii import unhexlify, hexlify
+from secrets import token_bytes
 from six import string_types
 from six.moves.urllib.parse import quote as urlquote
-
 import browserid.jwt
 import browserid.utils
 
-from fxa._utils import hexstr, APIClient, HawkTokenAuth
+from fxa.errors import ClientError
+from fxa._utils import (
+    APIClient,
+    HawkTokenAuth,
+    exactly_one_of,
+    hexstr
+)
 from fxa.constants import PRODUCTION_URLS
 from fxa.crypto import (
-    quick_stretch_password,
+    create_salt,
     generate_keypair,
-    derive_key,
-    xor
+    quick_stretch_password,
+    stretch_password,
+    unwrap_keys,
+    derive_auth_pw,
+    derive_wrap_kb,
 )
 
 
@@ -30,7 +38,7 @@ DEFAULT_CERT_DURATION = 1000 * 60 * 30  # half an hour, in milliseconds
 class Client(object):
     """Client for talking to the Firefox Accounts auth server."""
 
-    def __init__(self, server_url=None):
+    def __init__(self, server_url=None, key_stretch_version=1):
         if server_url is None:
             server_url = DEFAULT_SERVER_URL
         if not isinstance(server_url, string_types):
@@ -43,13 +51,39 @@ class Client(object):
             self.server_url = server_url
             self.apiclient = APIClient(server_url)
 
+        if key_stretch_version not in [1, 2]:
+            raise ValueError("Invalid key_stretch_version! Options are: 1,2")
+        else:
+            self.key_stretch_version = key_stretch_version
+
     def create_account(self, email, password=None, stretchpwd=None, **kwds):
+        """creates an account with email and password.
+
+        Note, the stretched password can also be provided. When doing this, and
+        using key_stretch_version=2, the format changes from a string to StrechedPassword
+        object
+        """
         keys = kwds.pop("keys", False)
-        stretchpwd = self._get_stretched_password(email, password, stretchpwd)
-        body = {
-            "email": email,
-            "authPW": hexstr(derive_key(stretchpwd, "authPW")),
-        }
+
+        if self.key_stretch_version == 2:
+            spwd = StretchedPassword(2, email, create_salt(2, hexlify(token_bytes(16))),
+                                     password, stretchpwd)
+            kb = token_bytes(32)
+            body = {
+                "email": email,
+                "authPW": spwd.get_auth_pw_v1(),
+                "wrapKb": spwd.get_wrapkb_v1(kb),
+                "authPWVersion2": spwd.get_auth_pw_v2(),
+                "wrapKbVersion2": spwd.get_wrapkb_v2(kb),
+                "clientSalt": spwd.v2_salt,
+            }
+        else:
+            spwd = StretchedPassword(1, email, None, password, stretchpwd)
+            body = {
+                "email": email,
+                "authPW": spwd.get_auth_pw_v1(),
+            }
+
         EXTRA_KEYS = ("service", "redirectTo", "resume", "preVerifyToken",
                       "preVerified")
         for extra in kwds:
@@ -58,48 +92,99 @@ class Client(object):
             else:
                 msg = "Unexpected keyword argument: {0}".format(extra)
                 raise TypeError(msg)
+
         url = "/account/create"
         if keys:
             url += "?keys=true"
+
         resp = self.apiclient.post(url, body)
+
+        if self.key_stretch_version == 2:
+            stretchpwd_final = spwd
+            key_fetch_token = resp.get('keyFetchTokenVersion2')
+        else:
+            stretchpwd_final = spwd.v1
+            key_fetch_token = resp.get('keyFetchToken')
+
         # XXX TODO: somehow sanity-check the schema on this endpoint
         return Session(
             client=self,
             email=email,
-            stretchpwd=stretchpwd,
+            stretchpwd=stretchpwd_final,
             uid=resp["uid"],
             token=resp["sessionToken"],
-            key_fetch_token=resp.get("keyFetchToken"),
+            key_fetch_token=key_fetch_token,
             verified=False,
             auth_timestamp=resp["authAt"],
         )
 
     def login(self, email, password=None, stretchpwd=None, keys=False, unblock_code=None,
               verification_method=None, reason="login"):
-        stretchpwd = self._get_stretched_password(email, password, stretchpwd)
-        body = {
-            "email": email,
-            "authPW": hexstr(derive_key(stretchpwd, "authPW")),
-            "reason": reason,
-        }
+        exactly_one_of(password, "password", stretchpwd, "stretchpwd")
+
+        if self.key_stretch_version == 2:
+            version, salt = self.get_key_stretch_version(email)
+            salt = salt if version == 2 else create_salt(2, hexlify(token_bytes(16)))
+            spwd = StretchedPassword(2, email, salt, password, stretchpwd)
+
+            try:
+                resp = self.start_password_change(email, spwd.v1)
+                key_fetch_token = resp["keyFetchToken"]
+                password_change_token = resp["passwordChangeToken"]
+                kb = self.fetch_keys(resp["keyFetchToken"], spwd.v1)[1]
+                resp = self.finish_password_change_v2(
+                    password_change_token,
+                    spwd,
+                    kb
+                )
+                body = {
+                    "email": email,
+                    "authPW": spwd.get_auth_pw_v2(),
+                    "reason": reason,
+                }
+            except Exception as inst:
+                # If something goes wrong fallback to v1 logins!
+                print("Warning! v2 key stretch auto upgrade failed! Falling back to v1 login. " +
+                      f"Reason: {inst}")
+                body = {
+                    "email": email,
+                    "authPW": spwd.get_auth_pw_v1(),
+                    "reason": reason,
+                }
+        else:
+            spwd = StretchedPassword(1, email, None, password, stretchpwd)
+            body = {
+                "email": email,
+                "authPW": spwd.get_auth_pw_v1(),
+                "reason": reason,
+            }
+
         url = "/account/login"
         if keys:
             url += "?keys=true"
-
         if unblock_code:
             body["unblockCode"] = unblock_code
         if verification_method:
             body["verificationMethod"] = verification_method
 
         resp = self.apiclient.post(url, body)
+
+        # Repackage stretchpwd based on version
+        if self.key_stretch_version == 2:
+            stretchpwd_final = spwd
+            key_fetch_token = resp.get("keyFetchTokenVersion2")
+        else:
+            stretchpwd_final = spwd.v1
+            key_fetch_token = resp.get("keyFetchToken")
+
         # XXX TODO: somehow sanity-check the schema on this endpoint
         return Session(
             client=self,
             email=email,
-            stretchpwd=stretchpwd,
+            stretchpwd=stretchpwd_final,
             uid=resp["uid"],
             token=resp["sessionToken"],
-            key_fetch_token=resp.get("keyFetchToken"),
+            key_fetch_token=key_fetch_token,
             verified=resp["verified"],
             verificationMethod=resp.get("verificationMethod"),
             auth_timestamp=resp["authAt"],
@@ -108,8 +193,7 @@ class Client(object):
     def _get_stretched_password(self, email, password=None, stretchpwd=None):
         if password is not None:
             if stretchpwd is not None:
-                msg = "must specify exactly one of 'password' or 'stretchpwd'"
-                raise ValueError(msg)
+                raise ValueError("must specify exactly one of 'password' or 'stretchpwd'")
             stretchpwd = quick_stretch_password(email, password)
         elif stretchpwd is None:
             raise ValueError("must specify one of 'password' or 'stretchpwd'")
@@ -119,13 +203,28 @@ class Client(object):
         return self.apiclient.get("/account/status?uid=" + uid)
 
     def destroy_account(self, email, password=None, stretchpwd=None):
-        stretchpwd = self._get_stretched_password(email, password, stretchpwd)
+        exactly_one_of(password, "password", stretchpwd, "stretchpwd")
+
+        # create a session and get pack teh stretched password
+        session = self.login(email, password, stretchpwd, keys=True)
+
+        # grab the stretched pwd
+        if isinstance(session.stretchpwd, bytes):
+            stretchpwd = session.stretchpwd
+        elif isinstance(session.stretchpwd, StretchedPassword) and session.stretchpwd.v2:
+            stretchpwd = session.stretchpwd.v2
+        elif isinstance(session.stretchpwd, StretchedPassword) and session.stretchpwd.v1:
+            stretchpwd = session.stretchpwd.v1
+        else:
+            raise ValueError("Unknown session.stretchpwd state!")
+
+        # destroy account
+        url = "/account/destroy"
         body = {
             "email": email,
-            "authPW": hexstr(derive_key(stretchpwd, "authPW")),
+            "authPW": hexstr(derive_auth_pw(stretchpwd))
         }
-        url = "/account/destroy"
-        self.apiclient.post(url, body)
+        self.apiclient.post(url, body, auth=session._auth)
 
     def get_random_bytes(self):
         # XXX TODO: sanity-check the schema of the returned response
@@ -137,41 +236,94 @@ class Client(object):
         resp = self.apiclient.get(url, auth=auth)
         bundle = unhexlify(resp["bundle"])
         keys = auth.unbundle("account/keys", bundle)
-        unwrap_key = derive_key(stretchpwd, "unwrapBkey")
-        return (keys[:32], xor(keys[32:], unwrap_key))
+        return unwrap_keys(keys, stretchpwd)
 
     def change_password(self, email, oldpwd=None, newpwd=None,
                         oldstretchpwd=None, newstretchpwd=None):
-        oldstretchpwd = self._get_stretched_password(email, oldpwd,
-                                                     oldstretchpwd)
-        newstretchpwd = self._get_stretched_password(email, newpwd,
-                                                     newstretchpwd)
-        resp = self.start_password_change(email, oldstretchpwd)
-        keys = self.fetch_keys(resp["keyFetchToken"], oldstretchpwd)
-        token = resp["passwordChangeToken"]
-        new_wrapkb = xor(keys[1], derive_key(newstretchpwd, "unwrapBkey"))
-        self.finish_password_change(token, newstretchpwd, new_wrapkb)
+        exactly_one_of(oldpwd, "oldpwd", oldstretchpwd, "oldstretchpwd")
+        exactly_one_of(newpwd, "newpwd", newstretchpwd, "newstretchpwd")
+
+        if self.key_stretch_version == 2:
+            version, salt = self.get_key_stretch_version(email)
+            old_spwd = StretchedPassword(version, email, salt, oldpwd, oldstretchpwd)
+            new_spwd = StretchedPassword(2, email, salt, newpwd, newstretchpwd)
+
+            if version == 2:
+                resp = self.start_password_change(email, old_spwd.v2)
+                kb = self.fetch_keys(resp["keyFetchToken2"], old_spwd.v2)[1]
+            else:
+                resp = self.start_password_change(email, old_spwd.v1)["passwordChangeToken"]
+                kb = self.fetch_keys(resp["keyFetchToken"], old_spwd.v1)[1]
+
+            self.finish_password_change_v2(
+                resp["passwordChangeToken"],
+                new_spwd,
+                kb)
+        else:
+            if oldpwd:
+                oldstretchpwd = quick_stretch_password(email, oldpwd)
+            if newpwd:
+                newstretchpwd = quick_stretch_password(email, newpwd)
+            resp = self.start_password_change(email, oldstretchpwd)
+            kb = self.fetch_keys(resp["keyFetchToken"], oldstretchpwd)[1]
+            new_wrapkb = derive_wrap_kb(kb, newstretchpwd)
+            self.finish_password_change(resp["passwordChangeToken"], newstretchpwd, new_wrapkb)
 
     def start_password_change(self, email, stretchpwd):
         body = {
             "email": email,
-            "oldAuthPW": hexstr(derive_key(stretchpwd, "authPW")),
+            "oldAuthPW": hexstr(derive_auth_pw(stretchpwd)),
         }
         return self.apiclient.post("/password/change/start", body)
 
     def finish_password_change(self, token, stretchpwd, wrapkb):
         body = {
-            "authPW": hexstr(derive_key(stretchpwd, "authPW")),
+            "authPW": hexstr(derive_auth_pw(stretchpwd)),
             "wrapKb": hexstr(wrapkb),
         }
         auth = HawkTokenAuth(token, "passwordChangeToken", self.apiclient)
         self.apiclient.post("/password/change/finish", body, auth=auth)
 
-    def reset_account(self, email, token, password=None, stretchpwd=None):
-        stretchpwd = self._get_stretched_password(email, password, stretchpwd)
+    def finish_password_change_v2(self, token, spwd, kb):
         body = {
-            "authPW": hexstr(derive_key(stretchpwd, "authPW")),
+            "authPW": spwd.get_auth_pw_v1(),
+            "wrapKb": spwd.get_wrapkb_v1(kb),
+            "authPWVersion2": spwd.get_auth_pw_v2(),
+            "wrapKbVersion2": spwd.get_wrapkb_v2(kb),
+            "clientSalt": spwd.v2_salt,
         }
+        auth = HawkTokenAuth(token, "passwordChangeToken", self.apiclient)
+
+        return self.apiclient.post("/password/change/finish", body, auth=auth)
+
+    def reset_account(self, email, token, password=None, stretchpwd=None):
+        # TODO: Add support for recovery key!
+
+        exactly_one_of(password, "password", stretchpwd, "stretchpwd")
+
+        body = None
+        if self.key_stretch_version == 2:
+            version, salt = self.get_key_stretch_version(email)
+            if version == 2:
+                spwd = StretchedPassword(2, email, salt, password, stretchpwd)
+
+                # Note, without recovery key, we must generate new kb
+                kb = token_bytes(32)
+                body = {
+                    "email": email,
+                    "authPW": spwd.get_auth_pw_v1(),
+                    "wrapKb": spwd.get_wrapkb_v1(kb),
+                    "authPWVersion2": spwd.get_auth_pw_v2(),
+                    "wrapKbVersion2": spwd.get_wrapkb_v2(kb),
+                    "clientSalt": salt,
+                }
+
+        if body is None:
+            spwd = StretchedPassword(1, email, None, password, stretchpwd)
+            body = {
+                "authPW": spwd.get_auth_pw_v1(),
+            }
+
         url = "/account/reset"
         auth = HawkTokenAuth(token, "accountResetToken", self.apiclient)
         self.apiclient.post(url, body, auth=auth)
@@ -244,9 +396,27 @@ class Client(object):
             "uid": uid,
             "unblockCode": unblockCode
         }
-
         url = "/account/login/reject_unblock_code"
         return self.apiclient.post(url, body)
+
+    def get_key_stretch_version(self, email):
+        # Fall back to v1 stretching if an error occurs here, which happens when
+        # the account does not exist at all.
+        try:
+            body = {
+                "email": email
+            }
+            resp = self.apiclient.post("/account/credentials/status", body)
+        except ClientError:
+            return 1, email
+
+        version = resp["currentVersion"]
+        if version == "v1":
+            return 1, create_salt(1, email)
+        if version == "v2":
+            return 2, resp["clientSalt"]
+
+        raise ValueError("Unknown version provided by api! Aborting...")
 
 
 class Session(object):
@@ -265,7 +435,12 @@ class Session(object):
         self.keys = None
         self._auth = HawkTokenAuth(token, "sessionToken", self.apiclient)
         self._key_fetch_token = key_fetch_token
-        self._stretchpwd = stretchpwd
+
+        # Quick validation on stretchpwd
+        if not isinstance(stretchpwd, StretchedPassword) and not isinstance(stretchpwd, bytes):
+            raise ValueError("stretchpwd must be a bytes or a StretchedPassword instance, " +
+                             f"but was {stretchpwd}")
+        self.stretchpwd = stretchpwd
 
     @property
     def apiclient(self):
@@ -282,14 +457,21 @@ class Session(object):
             if key_fetch_token is None:
                 # XXX TODO: what error?
                 raise RuntimeError("missing key_fetch_token")
+
         if stretchpwd is None:
-            stretchpwd = self._stretchpwd
-            if stretchpwd is None:
-                # XXX TODO: what error?
-                raise RuntimeError("missing stretchpwd")
+            if isinstance(self.stretchpwd, StretchedPassword):
+                stretchpwd = self.stretchpwd.v2
+            else:
+                stretchpwd = self.stretchpwd
+        elif isinstance(stretchpwd, StretchedPassword):
+            stretchpwd = stretchpwd.v2
+
+        if stretchpwd is None:
+            # XXX TODO: what error?
+            raise RuntimeError("missing stretchpwd")
         self.keys = self.client.fetch_keys(key_fetch_token, stretchpwd)
         self._key_fetch_token = None
-        self._stretchpwd = None
+        self.stretchpwd = None
         return self.keys
 
     def check_session_status(self):
@@ -432,3 +614,59 @@ class PasswordForgotToken(object):
         self.ttl = resp["ttl"]
         self.tries_remaining = resp["tries"]
         return resp
+
+
+class StretchedPassword(object):
+
+    def __init__(self, version, email, salt=None, password=None, stretchpwd=None):
+        self.version = version
+
+        if version == 2:
+            if not salt:
+                salt = create_salt(2, hexlify(token_bytes(16)))
+
+            if stretchpwd and not isinstance(stretchpwd, StretchedPassword):
+                raise ValueError("invalid stretchpwd type")
+
+            if stretchpwd:
+                if not isinstance(stretchpwd, StretchedPassword):
+                    raise ValueError(f"invalid stretchpwd type: {type(stretchpwd)}")
+
+                self.v1 = stretchpwd.v1
+                self.v2_salt = stretchpwd.v2_salt
+                self.v2 = stretchpwd.v2
+            else:
+                if not isinstance(password, str):
+                    raise ValueError(f"invalid password type: {type(stretchpwd)}")
+                self.v1 = quick_stretch_password(email, password)
+                self.v2_salt = salt
+                self.v2 = stretch_password(self.v2_salt, password)
+        else:
+            if stretchpwd:
+                if not isinstance(stretchpwd, bytes):
+                    raise ValueError(f"invalid stretchpwd type: {type(stretchpwd)}")
+                self.v1 = stretchpwd
+            else:
+                if not isinstance(password, str):
+                    raise ValueError(f"invalid password type: {type(password)}")
+                self.v1 = quick_stretch_password(email, password)
+
+    def get_auth_pw(self):
+        if self.v2:
+            return self.get_auth_pw_v2()
+        elif self.v1:
+            return self.get_auth_pw_v1()
+        else:
+            return None
+
+    def get_auth_pw_v1(self):
+        return hexstr(derive_auth_pw(self.v1))
+
+    def get_auth_pw_v2(self):
+        return hexstr(derive_auth_pw(self.v2))
+
+    def get_wrapkb_v1(self, kb):
+        return hexstr(derive_wrap_kb(kb, self.v1))
+
+    def get_wrapkb_v2(self, kb):
+        return hexstr(derive_wrap_kb(kb, self.v2))

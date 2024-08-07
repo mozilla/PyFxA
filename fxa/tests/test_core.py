@@ -7,60 +7,73 @@ from six import binary_type
 from six.moves.urllib.parse import urlparse
 
 import pyotp
+import pytest
+from parameterized import parameterized_class
 
 from browserid import jwt
 import browserid.tests.support
 import browserid.utils
 
 import fxa.errors
-from fxa.core import Client
-from fxa.crypto import quick_stretch_password
+from fxa.core import Client, StretchedPassword
 
 from fxa.tests.utils import (
     unittest,
     mutate_one_byte,
     TestEmailAccount,
     DUMMY_PASSWORD,
-    DUMMY_STRETCHED_PASSWORD,
 )
 
 
 # XXX TODO: this currently talks to a live server by default.
 # It's nice to have such an option, but we shouldn't hit the network
 # for every test run.  Instead let's build a mock server and use that.
-TEST_SERVER_URL = "https://stable.dev.lcip.org/auth"
+TEST_SERVER_URL = "https://api-accounts.stage.mozaws.net/v1/"
 
 
+@parameterized_class([
+   {"key_stretch_version": 1},
+   {"key_stretch_version": 2},
+])
 class TestCoreClient(unittest.TestCase):
 
     server_url = TEST_SERVER_URL
 
     def setUp(self):
-        self.client = Client(self.server_url)
+        self.client_v1 = Client(self.server_url)
+        self.client_v2 = Client(self.server_url, key_stretch_version=2)
+        if self.key_stretch_version == 2:
+            self.client = self.client_v2
+        else:
+            self.client = self.client_v1
         self._accounts_to_delete = []
+
+    def add_account_to_delete(self, acct, session):
+        acct.stretchpwd = session.stretchpwd
+        self._accounts_to_delete.append(acct)
 
     def tearDown(self):
         for acct in self._accounts_to_delete:
             acct.clear()
-            try:
-                stretchpwd = acct.stretchpwd
-            except AttributeError:
-                try:
-                    password = acct.password
-                    stretchpwd = quick_stretch_password(acct.email, password)
-                except AttributeError:
-                    stretchpwd = DUMMY_STRETCHED_PASSWORD
-            self.client.destroy_account(acct.email, stretchpwd=stretchpwd)
+            if isinstance(acct.stretchpwd, StretchedPassword):
+                self.client_v2.destroy_account(acct.email, stretchpwd=acct.stretchpwd)
+            elif isinstance(acct.stretchpwd, bytes):
+                self.client_v1.destroy_account(acct.email, stretchpwd=acct.stretchpwd)
+            else:
+                raise ValueError("Invalid acct.stretchpwd")
 
     def test_account_creation(self):
         acct = TestEmailAccount()
-        acct.password = DUMMY_PASSWORD
         session = self.client.create_account(acct.email, DUMMY_PASSWORD)
-        self._accounts_to_delete.append(acct)
+        self.add_account_to_delete(acct, session)
+        version, _ = self.client.get_key_stretch_version(acct.email)
+
+        self.assertIsNotNone(session.stretchpwd)
         self.assertEqual(session.email, acct.email)
         self.assertFalse(session.verified)
         self.assertEqual(session.keys, None)
         self.assertEqual(session._key_fetch_token, None)
+        self.assertEqual(version, self.key_stretch_version)
         with self.assertRaises(Exception):
             session.fetch_keys()
 
@@ -68,25 +81,30 @@ class TestCoreClient(unittest.TestCase):
         acct = TestEmailAccount()
         session = self.client.create_account(
             email=acct.email,
-            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+            password=DUMMY_PASSWORD,
             keys=True,
         )
-        self._accounts_to_delete.append(acct)
+        self.add_account_to_delete(acct, session)
+        version, _ = self.client.get_key_stretch_version(acct.email)
+
+        self.assertIsNotNone(session.stretchpwd)
         self.assertEqual(session.email, acct.email)
         self.assertFalse(session.verified)
         self.assertEqual(session.keys, None)
         self.assertNotEqual(session._key_fetch_token, None)
+        self.assertEqual(version, self.key_stretch_version)
 
     def test_account_login(self):
         acct = TestEmailAccount()
         session1 = self.client.create_account(
             email=acct.email,
-            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+            password=DUMMY_PASSWORD,
         )
-        self._accounts_to_delete.append(acct)
+        self.add_account_to_delete(acct, session1)
+
         session2 = self.client.login(
             email=acct.email,
-            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+            stretchpwd=session1.stretchpwd,
         )
         self.assertEqual(session1.email, session2.email)
         self.assertNotEqual(session1.token, session2.token)
@@ -97,13 +115,14 @@ class TestCoreClient(unittest.TestCase):
         self.assertTrue(isinstance(b1, binary_type))
         self.assertNotEqual(b1, b2)
 
+    @pytest.mark.skip(reason="Gets rate limited.")
     def test_resend_verify_code(self):
         acct = TestEmailAccount()
         session = self.client.create_account(
             email=acct.email,
-            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+            password=DUMMY_PASSWORD,
         )
-        self._accounts_to_delete.append(acct)
+        self.add_account_to_delete(acct, session)
 
         def is_verify_email(m):
             return "x-verify-code" in m["headers"]
@@ -121,11 +140,11 @@ class TestCoreClient(unittest.TestCase):
 
     def test_forgot_password_flow(self):
         acct = TestEmailAccount()
-        self.client.create_account(
+        session = self.client.create_account(
             email=acct.email,
-            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+            password=DUMMY_PASSWORD,
         )
-        self._accounts_to_delete.append(acct)
+        self.add_account_to_delete(acct, session)
 
         # Initiate the password reset flow, and grab the verification code.
         pftok = self.client.send_reset_code(acct.email, service="foobar")
@@ -155,17 +174,18 @@ class TestCoreClient(unittest.TestCase):
         self.client.reset_account(
             email=acct.email,
             token=artok,
-            stretchpwd=DUMMY_STRETCHED_PASSWORD
+            password=DUMMY_PASSWORD
         )
 
     def test_email_code_verification(self):
         self.client = Client(self.server_url)
         # Create a fresh testing account.
         self.acct = TestEmailAccount()
-        self.client.create_account(
+        session = self.client.create_account(
             email=self.acct.email,
-            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+            password=DUMMY_PASSWORD
         )
+        self.add_account_to_delete(self.acct, session)
 
         def wait_for_email(m):
             return "x-uid" in m["headers"] and "x-verify-code" in m["headers"]
@@ -178,13 +198,14 @@ class TestCoreClient(unittest.TestCase):
                                                  m["headers"]["x-verify-code"])
         self.assertEqual(response, {})
 
+    @pytest.mark.skip(reason="Endpoint no longer supported.")
     def test_send_unblock_code(self):
         acct = TestEmailAccount(email="block-{uniq}@{hostname}")
-        self.client.create_account(
+        session = self.client.create_account(
             email=acct.email,
-            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+            password=DUMMY_PASSWORD
         )
-        self._accounts_to_delete.append(acct)
+        self.add_account_to_delete(acct, session)
 
         # Initiate sending unblock code
         response = self.client.send_unblock_code(acct.email)
@@ -199,28 +220,90 @@ class TestCoreClient(unittest.TestCase):
 
         self.client.login(
             email=acct.email,
-            stretchpwd=DUMMY_STRETCHED_PASSWORD,
+            password=DUMMY_PASSWORD,
             unblock_code=code
         )
 
+    def test_key_stretch_upgrade(self):
+        # Only applicable for V2 key stretch
+        if self.key_stretch_version == 1:
+            return
 
+        # Create account using key stretch v1 mode
+        acct = TestEmailAccount()
+        session1 = self.client_v1.create_account(
+            email=acct.email,
+            password=DUMMY_PASSWORD,
+            keys=True
+        )
+        self.add_account_to_delete(acct, session1)
+        verify_account(acct, self.client_v1)
+        version1, _ = self.client_v2.get_key_stretch_version(acct.email)
+        keys1 = session1.fetch_keys()
+
+        # Login with using key stretch v2 mode
+        session2 = self.client_v2.login(email=acct.email, password=DUMMY_PASSWORD, keys=True)
+        version2, _ = self.client_v2.get_key_stretch_version(acct.email)
+        keys2 = session2.fetch_keys()
+
+        self.assertEqual(version1, 1)
+        self.assertEqual(version2, 2)
+        self.assertEqual(keys1[0], keys2[0])
+        self.assertEqual(keys1[1], keys2[1])
+
+    def test_legacy_key_stretch_support(self):
+        # Only applicable for V2 key stretch
+        if self.key_stretch_version == 1:
+            return
+
+        # Create account with V2 key stretching enabled
+        acct = TestEmailAccount()
+        session = self.client_v2.create_account(
+            email=acct.email,
+            password=DUMMY_PASSWORD,
+            keys=True
+        )
+        self.add_account_to_delete(acct, session)
+        verify_account(acct, self.client_v2)
+        version_1, _ = self.client_v2.get_key_stretch_version(acct.email)
+        keys_1 = session.fetch_keys()
+
+        # Login with key stretch v1 enabled and get keys
+        session = self.client_v1.login(email=acct.email, password=DUMMY_PASSWORD, keys=True)
+        version_2, _ = self.client_v2.get_key_stretch_version(acct.email)
+        keys_2 = session.fetch_keys()
+
+        self.assertEqual(version_1, 2)
+        self.assertEqual(version_2, 2)
+        self.assertEqual(keys_1, keys_2)
+
+
+@parameterized_class([
+   {"key_stretch_version": 1},
+   {"key_stretch_version": 2},
+])
 class TestCoreClientSession(unittest.TestCase):
 
     server_url = TEST_SERVER_URL
 
     def setUp(self):
-        self.client = Client(self.server_url)
+
+        self.client_v2 = Client(self.server_url, key_stretch_version=2)
+        self.client_v1 = Client(self.server_url, key_stretch_version=1)
+        if self.key_stretch_version == 2:
+            self.client = self.client_v2
+        else:
+            self.client = self.client_v1
+
         # Create a fresh testing account.
         self.acct = TestEmailAccount()
-        self.stretchpwd = quick_stretch_password(
-            self.acct.email,
-            DUMMY_PASSWORD,
-        )
         self.session = self.client.create_account(
             email=self.acct.email,
-            stretchpwd=self.stretchpwd,
+            password=DUMMY_PASSWORD,
             keys=True,
         )
+        self.stretchpwd = self.session.stretchpwd
+
         # Verify the account so that we can actually use the session.
         m = self.acct.wait_for_email(lambda m: "x-verify-code" in m["headers"])
         if not m:
@@ -265,6 +348,7 @@ class TestCoreClientSession(unittest.TestCase):
         self.assertTrue(isinstance(b1, binary_type))
         self.assertNotEqual(b1, b2)
 
+    @pytest.mark.skip(reason="Endpoint no longer supported.")
     def test_sign_certificate(self):
         email = self.acct.email
         pubkey = browserid.tests.support.get_keypair(email)[0]
@@ -273,6 +357,7 @@ class TestCoreClientSession(unittest.TestCase):
         expected_issuer = urlparse(self.client.server_url).hostname
         self.assertEqual(issuer, expected_issuer)
 
+    @pytest.mark.skip(reason="Endpoint no longer supported.")
     def test_sign_certificate_handles_duration(self):
         email = self.acct.email
         pubkey = browserid.tests.support.get_keypair(email)[0]
@@ -286,7 +371,6 @@ class TestCoreClientSession(unittest.TestCase):
     def test_change_password(self):
         # Change the password.
         newpwd = mutate_one_byte(DUMMY_PASSWORD)
-        self.stretchpwd = quick_stretch_password(self.acct.email, newpwd)
         self.session.change_password(DUMMY_PASSWORD, newpwd)
 
         # Check that we can use the new password.
@@ -301,9 +385,11 @@ class TestCoreClientSession(unittest.TestCase):
             session2.verify_email_code(m["headers"]["x-verify-code"])
 
         # Check that encryption keys have been preserved.
-        session2.fetch_keys()
-        self.assertEqual(self.session.keys, session2.keys)
+        keys = session2.fetch_keys()
+        self.assertEqual(self.session.keys[0], keys[0])
+        self.assertEqual(self.session.keys[1], keys[1])
 
+    @pytest.mark.skip(reason="Endpoint no longer supported.")
     def test_get_identity_assertion(self):
         assertion = self.session.get_identity_assertion("http://example.com")
         data = browserid.verify(assertion, audience="http://example.com")
@@ -313,6 +399,7 @@ class TestCoreClientSession(unittest.TestCase):
         expected_email = "{0}@{1}".format(self.session.uid, expected_issuer)
         self.assertEqual(data["email"], expected_email)
 
+    @pytest.mark.skip(reason="Endpoint no longer supported.")
     def test_get_identity_assertion_handles_duration(self):
         millis = int(round(time.time() * 1000))
         bid_assertion = self.session.get_identity_assertion(
@@ -332,6 +419,7 @@ class TestCoreClientSession(unittest.TestCase):
         self.assertGreaterEqual(ttl, 1230)
         self.assertLessEqual(ttl, 1260)
 
+    @pytest.mark.skip(reason="Endpoint no longer supported.")
     def test_get_identity_assertion_accepts_service(self):
         # We can't observe any side-effects of sending the service query param,
         # but we can test that it doesn't error out.
@@ -369,3 +457,17 @@ class TestCoreClientSession(unittest.TestCase):
 
         # And now should not exist
         self.assertFalse(self.session.totp_exists())
+
+
+# helpers
+def verify_account(acct, client):
+    def wait_for_email(m):
+        return "x-uid" in m["headers"] and "x-verify-code" in m["headers"]
+
+    m = acct.wait_for_email(wait_for_email)
+    if not m:
+        raise RuntimeError("Verification email was not received")
+    # If everything went well, verify_email_code should return an empty json object
+    response = client.verify_email_code(m["headers"]["x-uid"],
+                                        m["headers"]["x-verify-code"])
+    return response

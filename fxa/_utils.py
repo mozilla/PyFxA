@@ -428,3 +428,8 @@ def _encoded(value, encoding='utf-8'):
     if value_type != six.binary_type:
         return value.encode(encoding)
     return value
+
+
+def exactly_one_of(p1_val, p1_name, p2_val, p2_name):
+    if p1_val and p2_val or not p1_val and not p2_val:
+        raise ValueError(f"must specify exactly one of '{p1_name}' or '{p2_name}'")

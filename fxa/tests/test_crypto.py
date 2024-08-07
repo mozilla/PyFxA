@@ -4,11 +4,15 @@
 from __future__ import unicode_literals
 import os
 import re
+
+from parameterized import parameterized
+
 from binascii import unhexlify
 from six import text_type
 
 from fxa.crypto import (
     quick_stretch_password,
+    stretch_password,
     derive_key,
     bundle,
     unbundle,
@@ -21,7 +25,7 @@ from fxa.tests.utils import (
     mutate_one_byte,
     DUMMY_EMAIL,
     DUMMY_PASSWORD,
-    DUMMY_STRETCHED_PASSWORD,
+    DUMMY_SALT_V2,
 )
 
 
@@ -37,32 +41,57 @@ def dehexlify(hexbytes):
 
 class TestCoreCrypto(unittest.TestCase):
 
-    def test_password_stretching_and_key_derivation(self):
-        # These are the test vectors from the onepw protocol document.
-        email = u"andr\xe9@example.org"
-        self.assertEqual(email.encode("utf8"), dehexlify("""
-            616e6472c3a94065 78616d706c652e6f 7267
-        """))
+    @parameterized.expand([
+       (
+           1,
+           u"andr\xe9@example.org",
+           "e4e8889bd8bd61ad 6de6b95c059d56e7 b50dacdaf62bd846 44af7e2add84345d",
+           "247b675ffb4c4631 0bc87e26d712153a be5e1c90ef00a478 4594f97ef54f2375",
+           "de6a2648b78284fc b9ffa81ba9580330 9cfba7af583c01a8 a1a63e567234dd28"
+        ),
+       (
+           2,
+           b'c2dc400c9cc1a93dd3cd3af1b05ebd60',
+           "b38b6a81c851c343 43899bb1c64bd179 cdddea8402608494 44b0b91b413a80de",
+           "28c81379c31905d1 6f9aa9c63fcf0950 094e413e16a9c9be 41f52dbb09af518e",
+           "e1c1f362437c8977 e2ad8372cafcaf87 3df7dce30ae351bc d262af05e84caa92"
+        ),
+    ])
+    def test_password_stretching_and_key_derivation(
+        self,
+        key_stretch_version,
+        salt,
+        expected_qspwd,
+        expected_authpw,
+        expected_ubkey
+    ):
         pwd = u"p\xe4ssw\xf6rd"
         self.assertEqual(pwd.encode("utf8"), dehexlify("""
             70c3a4737377c3b6 7264
         """))
-        qspwd = quick_stretch_password(email, pwd)
-        self.assertEqual(qspwd, dehexlify("""
-            e4e8889bd8bd61ad 6de6b95c059d56e7 b50dacdaf62bd846 44af7e2add84345d
-        """))
-        authpw = derive_key(qspwd, "authPW")
-        self.assertEqual(authpw, dehexlify("""
-            247b675ffb4c4631 0bc87e26d712153a be5e1c90ef00a478 4594f97ef54f2375
-        """))
-        ubkey = derive_key(qspwd, "unwrapBkey")
-        self.assertEqual(ubkey, dehexlify("""
-            de6a2648b78284fc b9ffa81ba9580330 9cfba7af583c01a8 a1a63e567234dd28
-        """))
+        if key_stretch_version == 2:
+            qspwd = stretch_password(salt, pwd)
+        else:
+            qspwd = quick_stretch_password(salt, pwd)
 
-    def test_dummy_credentials(self):
-        qspwd = quick_stretch_password(DUMMY_EMAIL, DUMMY_PASSWORD)
-        self.assertEqual(qspwd, DUMMY_STRETCHED_PASSWORD)
+        authpw = derive_key(qspwd, "authPW")
+        ubkey = derive_key(qspwd, "unwrapBkey")
+
+        self.assertEqual(qspwd, dehexlify(expected_qspwd))
+        self.assertEqual(authpw, dehexlify(expected_authpw))
+        self.assertEqual(ubkey, dehexlify(expected_ubkey))
+
+    @parameterized.expand([
+       (1, unhexlify("59eb52f6ee5ebe2b599161aaa9b171c3baa8bed594d4e2a8b4b539fb9eba8368")),
+       (2, unhexlify("570b9e5d11640357648fc9dcda78b767fc3676393016391762a21133d291fd1d")),
+    ])
+    def test_dummy_credentials(self, key_stretch_version, expected_stretched_password):
+        if key_stretch_version == 2:
+            qspwd = stretch_password(DUMMY_SALT_V2, DUMMY_PASSWORD)
+        else:
+            qspwd = quick_stretch_password(DUMMY_EMAIL, DUMMY_PASSWORD)
+
+        self.assertEqual(qspwd, expected_stretched_password)
 
     def test_bundle_and_unbundle(self):
         key = os.urandom(32)
