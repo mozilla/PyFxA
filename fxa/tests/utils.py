@@ -5,7 +5,6 @@ import time
 import random
 import requests
 import unittest # NOQA
-from binascii import unhexlify
 from six import binary_type
 from six.moves.urllib.parse import urlparse, urljoin
 
@@ -14,9 +13,8 @@ from fxa._utils import uniq
 
 DUMMY_EMAIL = "PyFxATester@restmail.net"
 DUMMY_PASSWORD = "l33tP@55W0rd"
-DUMMY_STRETCHED_PASSWORD = unhexlify(
-    "59eb52f6ee5ebe2b599161aaa9b171c3baa8bed594d4e2a8b4b539fb9eba8368"
-)
+DUMMY_SALT_CORE_V2 = '735e18bdc1e83d964930be1e89591263'
+DUMMY_SALT_V2 = f'identity.mozilla.com/picl/v1/quickStretchV2:{DUMMY_SALT_CORE_V2}'
 
 
 def mutate_one_byte(input):
