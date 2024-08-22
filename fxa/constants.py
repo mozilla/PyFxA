@@ -16,15 +16,7 @@ ENVIRONMENT_URLS = {
         "profile": "https://profile.stage.mozaws.net/v1",
         "token": "https://token.stage.mozaws.net/",
     },
-    "stable": {
-        "authentication": "https://stable.dev.lcip.org/auth/v1",
-        "oauth": "https://oauth-stable.dev.lcip.org/v1",
-        "content": "https://stable.dev.lcip.org/",
-        "profile": "https://stable.dev.lcip.org/profile/v1",
-        "token": None,
-    }
 }
 
 PRODUCTION_URLS = ENVIRONMENT_URLS['production']
 STAGE_URLS = ENVIRONMENT_URLS['stage']
-STABLE_URLS = ENVIRONMENT_URLS['stable']

@@ -14,11 +14,31 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.asymmetric import dsa
 
+import re
 import browserid.jwt
 from browserid.utils import to_hex
 
 from six import int2byte, text_type
 from six.moves import xrange
+
+SALT_NAMESPACE = "identity.mozilla.com/picl/v1/"
+KEY_STRETCH_NAMESPACE_V2 = "quickStretchV2:"
+KEY_STRETCH_NAMESPACE_V1 = "quickStretch:"
+SALT_NAMESPACE_V1 = SALT_NAMESPACE + KEY_STRETCH_NAMESPACE_V1
+SALT_NAMESPACE_V2 = SALT_NAMESPACE + KEY_STRETCH_NAMESPACE_V2
+
+
+def test_salt_token(val):
+    """checks for valid token in v2 salts."""
+    core = val.replace(SALT_NAMESPACE_V2, '')
+    return re.fullmatch('[0-9a-fA-F]{32}', core)
+
+
+def test_salt_email(val):
+    """checks for valid email in v1 salts."""
+    core = val.replace(SALT_NAMESPACE_V1, '')
+    return re.match("^[\\w.!#$%&'*+\\/=?^`{|}~-]{1,64}@[a-z\\d](?:[a-z\\d-]{0,253}[a-z\\d])?" +
+                    "(?:\\.[a-z\\d](?:[a-z\\d-]{0,253}[a-z\\d])?)+$", core)
 
 
 def hkdf_namespace(name, extra=None):
@@ -32,10 +52,80 @@ def hkdf_namespace(name, extra=None):
     """
     if isinstance(name, text_type):
         name = name.encode("utf8")
-    kw = b"identity.mozilla.com/picl/v1/" + name
+
+    if isinstance(extra, text_type):
+        extra = extra.encode('utf8')
+
+    kw = SALT_NAMESPACE.encode('utf8') + name
     if extra is not None:
-        kw = kw + b":" + extra
+        kw = kw + extra
     return kw
+
+
+def create_salt(version, value):
+    """Creates a formatted salt for salting the password stretch. This is flexible and
+    allows providing a core value (the distinct part of the salt) or an entire salt
+    that includes the version namespace."""
+    if isinstance(value, bytes):
+        value = value.decode('utf8')
+
+    if version == 2:
+        value = value.replace(SALT_NAMESPACE_V2, "")
+        salt = hkdf_namespace(KEY_STRETCH_NAMESPACE_V2, value)
+        return salt.decode('utf8')
+    else:
+        value = value.replace(SALT_NAMESPACE_V1, "")
+        salt = hkdf_namespace(KEY_STRETCH_NAMESPACE_V1, value)
+        return salt.decode('utf8')
+
+
+def check_salt(version, salt):
+    if not salt:
+        raise ValueError("salt must be provided")
+
+    if not isinstance(salt, text_type):
+        salt = salt.decode("utf8")
+
+    if version == 2:
+        if not salt.startswith(SALT_NAMESPACE_V2):
+            raise ValueError("invalid salt prefix")
+        if not test_salt_token(salt):
+            raise ValueError("core of salt must be a 16 byte token " + salt)
+    else:
+        if not salt.startswith(SALT_NAMESPACE_V1):
+            raise ValueError("invalid salt prefix")
+        if not test_salt_email(salt):
+            raise ValueError("salts must be emails " + salt)
+
+    return salt.encode("utf8")
+
+
+def check_password(password):
+    if not isinstance(password, text_type):
+        password = password.decode("utf8")
+    return password.encode("utf8")
+
+
+def stretch_password(salt, password):
+    """Perform a "stretch" operation on the given credentials.
+
+    This performs a largish number of PBKDF2 rounds on the given password.
+    And produces a password that is resistant to brute force guessing. This
+    is now the preferred stretching approaching
+    """
+
+    if not password:
+        raise ValueError("password must be provided")
+
+    # Ensure the core salt value is being used, not prefixed version.
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=check_salt(2, create_salt(2, salt)),
+        iterations=650000,
+        backend=backend
+    )
+    return kdf.derive(check_password(password))
 
 
 def quick_stretch_password(email, password):
@@ -46,18 +136,14 @@ def quick_stretch_password(email, password):
     the client (which may be very resource constrained) and resistance to
     brute-force guessing (which would ideally demand more stretching).
     """
-    if isinstance(email, text_type):
-        email = email.encode("utf8")
-    if isinstance(password, text_type):
-        password = password.encode("utf8")
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=hkdf_namespace(b"quickStretch", email),
+        salt=check_salt(1, create_salt(1, email)),
         iterations=1000,
         backend=backend
     )
-    return kdf.derive(password)
+    return kdf.derive(check_password(password))
 
 
 def derive_key(secret, namespace, size=32):
@@ -154,3 +240,16 @@ def generate_keypair():
     private_key = browserid.jwt.DS128Key(data)
     del data["x"]
     return data, private_key
+
+
+def unwrap_keys(keys, stretchpwd):
+    unwrap_key = derive_key(stretchpwd, "unwrapBkey")
+    return (keys[:32], xor(keys[32:], unwrap_key))
+
+
+def derive_auth_pw(stretchpwd):
+    return derive_key(stretchpwd, "authPW")
+
+
+def derive_wrap_kb(kb, stretchpwd):
+    return xor(kb, derive_key(stretchpwd, "unwrapBkey"))
