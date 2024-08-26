@@ -309,6 +309,7 @@ Contributing to PyFxA
 =====================
 
 The basic requirements are:
+
 - Python 3.12.2 or higher
 - Pip 24.0
 
