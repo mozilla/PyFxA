@@ -309,16 +309,24 @@ Contributing to PyFxA
 =====================
 
 The basic requirements are:
+
 - Python 3.12.2 or higher
 - Pip 24.0
 
-To get start: 
-- `python -m pip install -r dev-requirements.txt`
-- `python setup.py install`
-- `python setup.py build`
+To get started:
+
+.. code-block::
+
+    $ python -m pip install -r dev-requirements.txt
+    $ python setup.py install
+    $ python setup.py build
 
 To run tests:
-- `pytest`
+
+.. code-block::
+
+    $ pytest
+
 
 
 
