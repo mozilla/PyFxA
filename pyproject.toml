@@ -1,0 +1,71 @@
+[build-system]
+build-backend = "hatchling.build"
+
+requires = [ "hatchling" ]
+
+[project]
+name = "pyfxa"
+description = "Firefox Accounts client library for Python"
+readme = "README.rst"
+keywords = [
+  "accounts",
+  "authentication",
+  "firefox",
+]
+license = "MPL-2.0"
+authors = [
+  { name = "Mozilla Services", email = "services-dev@mozilla.org" },
+]
+classifiers = [
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dynamic = [ "version" ]
+dependencies = [
+  "cryptography",
+  "hawkauthlib",
+  "pybrowserid",
+  "pyjwt",
+  "requests>=2.4.2",
+  "six>=1.14",
+]
+
+optional-dependencies.dev = [
+  "grequests",
+  "parameterized",
+  # Latest releases of pyotp do not support python2.
+  "pyotp",
+  "pytest",
+  "pytest-cov",
+  "pytest-runner",
+  "responses",
+]
+urls.Homepage = "https://github.com/mozilla/PyFxA"
+scripts.fxa-client = "fxa.__main__:main"
+entry-points."httpie.plugins.auth.v1".httpie_fxa-bearer = "fxa.plugins.requests:FxABearerTokenPlugin"
+entry-points."httpie.plugins.auth.v1".httpie_fxa-browserid = "fxa.plugins.requests:FxABrowserIDPlugin"
+
+[tool.hatch.version]
+path = "fxa/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "fxa/",
+  "CHANGES.txt",
+  "CODE_OF_CONDUCT.md",
+  "LICENSE.txt",
+  "README.rst",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [ "fxa" ]
+
+[tool.flake8]
+max-line-length = 99

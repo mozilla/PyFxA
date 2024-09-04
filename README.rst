@@ -313,9 +313,8 @@ The basic requirements are:
 - Pip 24.0
 
 To get start: 
-- `python -m pip install -r dev-requirements.txt`
-- `python setup.py install`
-- `python setup.py build`
+- `pip install '.[dev]''`
+- `pip install .`
 
 To run tests:
 - `pytest`
