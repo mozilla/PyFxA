@@ -2,9 +2,6 @@
 PyFxA: Python library for interacting with Mozilla Accounts
 ===========================================================
 
-.. image:: https://travis-ci.org/mozilla/PyFxA.svg?branch=master
-    :target: https://travis-ci.org/mozilla/PyFxA
-
 This is python library for interacting with the Mozilla Accounts (formerly known as the Firefox Accounts) ecosystem.
 
 Eventually, it is planned to provide easy support for the following features:
@@ -109,7 +106,7 @@ Get a Bearer Token for an existing account
         --account-server https://api.accounts.firefox.com/v1 \
         --oauth-server https://oauth.accounts.firefox.com/v1
 
-    Please enter a password for you@domain.tld: 
+    Please enter a password for you@domain.tld:
 
     # ---- BEARER TOKEN INFO ----
     # User: you@domain.tld
@@ -317,8 +314,8 @@ To get started:
 
 .. code-block::
 
-    $ `pip install '.[dev]''`
-    $ `pip install .`
+    $ pip install '.[dev]'
+    $ pip install .
 
 To run tests:
 
