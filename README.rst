@@ -317,9 +317,8 @@ To get started:
 
 .. code-block::
 
-    $ python -m pip install -r dev-requirements.txt
-    $ python setup.py install
-    $ python setup.py build
+    $ `pip install '.[dev]''`
+    $ `pip install .`
 
 To run tests:
 

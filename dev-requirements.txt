@@ -1,8 +1,0 @@
-grequests
-responses
-pytest
-pytest-runner
-pytest-cov
-# Latest releases of pyotp do not support python2.
-pyotp
-parameterized

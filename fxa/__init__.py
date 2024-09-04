@@ -7,15 +7,14 @@ Python library for interacting with the Firefox Accounts ecosystem.
 
 """
 
-import pkg_resources
-
-__version__ = pkg_resources.get_distribution("PyFxA").version
-__ver_tuple__ = tuple(__version__.split('.'))
+__version__ = "0.7.8"
+__ver_tuple__ = tuple(__version__.split("."))
 
 
 def monkey_patch_for_gevent():
     import fxa._utils
     import grequests
+
     fxa._utils.requests = grequests
 
 
