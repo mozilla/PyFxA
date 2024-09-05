@@ -38,7 +38,7 @@ class InProtocolError(Error):
         self.error = details.get("error", "unknown error")
         self.info = details.get("info", None)
         message = details.get("message", self.error)
-        super(InProtocolError, self).__init__(message)
+        super().__init__(message)
 
 
 class ClientError(InProtocolError):
@@ -64,5 +64,5 @@ class ScopeMismatchError(TrustError):
     """Error raised when the OAuth scopes do not match."""
 
     def __init__(self, provided, required):
-        message = "scope {0} does not match {1}".format(provided, required)
-        super(ScopeMismatchError, self).__init__(message)
+        message = f"scope {provided} does not match {required}"
+        super().__init__(message)

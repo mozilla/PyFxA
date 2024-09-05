@@ -9,12 +9,10 @@ This private-api stuff that will most likely change, move, refactor
 etc as we go.  So don't import any of it outside of this package.
 
 """
-from __future__ import absolute_import
 import os
 import time
 import hashlib
 import hmac
-import six
 from binascii import hexlify, unhexlify
 from base64 import b64encode
 try:
@@ -22,8 +20,7 @@ try:
 except ImportError:  # pragma: no cover
     import pickle
 
-from six import PY3
-from six.moves.urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin
 
 import requests
 import requests.auth
@@ -47,12 +44,9 @@ USER_AGENT_HEADER = ' '.join((
 ))
 
 
-if not PY3:
-    hexstr = hexlify
-else:  # pragma: no cover
-    def hexstr(data):
-        """Like binascii.hexlify, but always returns a str instance."""
-        return hexlify(data).decode("ascii")
+def hexstr(data):
+    """Like binascii.hexlify, but always returns a str instance."""
+    return hexlify(data).decode("ascii")
 
 
 def uniq(size=10):
@@ -80,7 +74,7 @@ def scope_matches(provided, required):
     :param required: the scope required (e.g. by the application).
     :returns: ``True`` if all required scopes are provided, ``False`` if not.
     """
-    if isinstance(provided, six.string_types):
+    if isinstance(provided, str):
         raise ValueError("Provided scopes must be a list, not a single string")
 
     if not isinstance(required, (list, tuple)):
@@ -141,7 +135,7 @@ def _match_url_scope(provided, required):
     return True
 
 
-class APIClient(object):
+class APIClient:
     """A requests.Session wrapper specialized for FxA API access.
 
     An instance of this class should be used for making requests to an FxA
@@ -382,8 +376,7 @@ class HawkTokenAuth(requests.auth.AuthBase):
             hasher.update(body)
             hasher.update(b"\n")
             hash = b64encode(hasher.digest())
-            if PY3:
-                hash = hash.decode("ascii")
+            hash = hash.decode("ascii")
             params["hash"] = hash
         if self.apiclient is not None:
             params["ts"] = str(int(self.apiclient.server_curtime()))
@@ -410,22 +403,19 @@ class BearerTokenAuth(requests.auth.AuthBase):
         self.token = token
 
     def __call__(self, req):
-        req.headers["Authorization"] = "Bearer {0}".format(self.token)
+        req.headers["Authorization"] = f"Bearer {self.token}"
         return req
 
 
 def _decoded(value, encoding='utf-8'):
     """Make sure the value is of type ``unicode`` in both PY2 and PY3."""
-    value_type = type(value)
-    if value_type != six.text_type:
+    if not isinstance(value, str):
         value = value.decode(encoding)
     return value
 
 
 def _encoded(value, encoding='utf-8'):
-    """Make sure the value is of type ``bytes`` in both PY2 and PY3."""
-    value_type = type(value)
-    if value_type != six.binary_type:
+    if not isinstance(value, bytes):
         return value.encode(encoding)
     return value
 

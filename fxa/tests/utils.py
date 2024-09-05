@@ -5,8 +5,7 @@ import time
 import random
 import requests
 import unittest # NOQA
-from six import binary_type
-from six.moves.urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin
 
 from fxa._utils import uniq
 
@@ -30,12 +29,12 @@ def mutate_one_byte(input):
         replacement = "b"
     else:
         replacement = "a"
-    if isinstance(input, binary_type):
+    if isinstance(input, bytes):
         replacement = replacement.encode("ascii")
     return input[:pos] + replacement + input[pos + 1:]
 
 
-class TestEmailAccount(object):
+class TestEmailAccount:
     """A live email account that can be used for testing purposes.
 
     This is a simple interface to http://restmail.net that allows you to

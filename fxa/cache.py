@@ -5,7 +5,7 @@ import collections
 DEFAULT_CACHE_EXPIRY = 300
 
 
-class MemoryCache(object):
+class MemoryCache:
     """Simple Memory cache."""
 
     def __init__(self, ttl=DEFAULT_CACHE_EXPIRY):

@@ -6,11 +6,7 @@ import os
 import json
 import jwt
 import responses
-import six
-try:
-    from unittest import mock
-except ImportError:
-    import mock
+from unittest import mock
 
 import fxa.errors
 from fxa.cache import MemoryCache
@@ -18,7 +14,7 @@ from fxa.oauth import Client, scope_matches
 from fxa._utils import _decoded
 from fxa.tests.utils import unittest
 
-from six.moves.urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs
 
 
 TEST_SERVER_URL = "https://server/v1"
@@ -289,7 +285,7 @@ class TestAuthClientAuthorizeCode(unittest.TestCase):
                 'Content-Type': 'application/json'
             }
             body = {
-                'redirect': 'https://relier/page?code=qed&state={}'.format(data["state"])
+                'redirect': f'https://relier/page?code=qed&state={data["state"]}'
             }
             return (200, headers, json.dumps(body))
 
@@ -507,7 +503,7 @@ class TestScopeMatch(unittest.TestCase):
         ]
         for (provided, required) in VALID_MATCHES:
             self.assertTrue(scope_matches(provided.split(), required.split()),
-                            '"{}" should match "{}"'.format(provided, required))
+                            f'"{provided}" should match "{required}"')
 
     def test_published_test_vectors_for_invalid_matches(self):
         INVALID_MATCHES = [
@@ -537,7 +533,7 @@ class TestScopeMatch(unittest.TestCase):
         ]
         for (provided, required) in INVALID_MATCHES:
             self.assertFalse(scope_matches(provided.split(), required.split()),
-                             '"{}" should not match "{}"'.format(provided, required))
+                             f'"{provided}" should not match "{required}"')
 
 
 class TestCachedClient(unittest.TestCase):
@@ -601,7 +597,6 @@ class TestCachedClient(unittest.TestCase):
 
 class TestGeventPatch(unittest.TestCase):
 
-    @unittest.skipUnless(six.PY2, "gevent works only with Python 2")
     def test_monkey_patch_for_gevent(self):
         import fxa
         import fxa._utils
@@ -626,7 +621,7 @@ class TestJwtToken(unittest.TestCase):
 
     def _make_jwt(self, payload, key, alg="RS256", header={"typ": "at+jwt"}):
         header = header.copy()  # So we don't accidentally mutate argument in-place
-        return six.ensure_text(jwt.encode(payload, key, alg, header))
+        return jwt.encode(payload, key, alg, header)
 
     def setUp(self):
         self.client = Client(server_url=self.server_url)
@@ -760,7 +755,7 @@ class TestJwtToken(unittest.TestCase):
 class AnyStringValue:
 
     def __eq__(self, other):
-        return isinstance(other, six.string_types)
+        return isinstance(other, str)
 
     def __repr__(self):
         return 'any string'

@@ -6,7 +6,7 @@ from fxa.tests.mock_utilities import (
     mock, mocked_core_client, mocked_oauth_client)
 
 
-class Request(object):
+class Request:
     def __init__(self):
         self.method = 'GET'
         self.body = ''
@@ -17,7 +17,7 @@ class Request(object):
 class TestFxABrowserIDAuth(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
-        super(TestFxABrowserIDAuth, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.auth = FxABrowserIDAuth(email="test@restmail.com",
                                      password="this is not a password",
                                      with_client_state=True,
@@ -107,7 +107,7 @@ class TestFxABrowserIDAuth(unittest.TestCase):
 
 class TestFxABearerTokenAuth(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(TestFxABearerTokenAuth, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.auth = FxABearerTokenAuth(
             email="test@restmail.com",
             password="this is not a password",

@@ -4,8 +4,7 @@
 
 from binascii import unhexlify, hexlify
 from secrets import token_bytes
-from six import string_types
-from six.moves.urllib.parse import quote as urlquote
+from urllib.parse import quote as urlquote
 import browserid.jwt
 import browserid.utils
 
@@ -35,13 +34,13 @@ DEFAULT_ASSERTION_DURATION = 60
 DEFAULT_CERT_DURATION = 1000 * 60 * 30  # half an hour, in milliseconds
 
 
-class Client(object):
+class Client:
     """Client for talking to the Firefox Accounts auth server."""
 
     def __init__(self, server_url=None, key_stretch_version=1):
         if server_url is None:
             server_url = DEFAULT_SERVER_URL
-        if not isinstance(server_url, string_types):
+        if not isinstance(server_url, str):
             self.apiclient = server_url
             self.server_url = self.apiclient.server_url
         else:
@@ -90,7 +89,7 @@ class Client(object):
             if extra in EXTRA_KEYS:
                 body[extra] = kwds[extra]
             else:
-                msg = "Unexpected keyword argument: {0}".format(extra)
+                msg = f"Unexpected keyword argument: {extra}"
                 raise TypeError(msg)
 
         url = "/account/create"
@@ -336,7 +335,7 @@ class Client(object):
             if extra in ("service", "redirectTo", "resume"):
                 body[extra] = kwds[extra]
             else:
-                msg = "Unexpected keyword argument: {0}".format(extra)
+                msg = f"Unexpected keyword argument: {extra}"
                 raise TypeError(msg)
         url = "/password/forgot/send_code"
         resp = self.apiclient.post(url, body)
@@ -356,7 +355,7 @@ class Client(object):
             if extra in ("service", "redirectTo", "resume"):
                 body[extra] = kwds[extra]
             else:
-                msg = "Unexpected keyword argument: {0}".format(extra)
+                msg = f"Unexpected keyword argument: {extra}"
                 raise TypeError(msg)
         url = "/password/forgot/resend_code"
         auth = HawkTokenAuth(token, "passwordForgotToken", self.apiclient)
@@ -419,7 +418,7 @@ class Client(object):
         raise ValueError("Unknown version provided by api! Aborting...")
 
 
-class Session(object):
+class Session:
 
     def __init__(self, client, email, stretchpwd, uid, token,
                  key_fetch_token=None, verified=False, verificationMethod=None,
@@ -504,7 +503,7 @@ class Session(object):
             if extra in ("service", "redirectTo", "resume"):
                 body[extra] = kwds[extra]
             else:
-                msg = "Unexpected keyword argument: {0}".format(extra)
+                msg = f"Unexpected keyword argument: {extra}"
                 raise TypeError(msg)
         url = "/recovery_email/resend_code"
         self.apiclient.post(url, body, auth=self._auth)
@@ -588,7 +587,7 @@ class Session(object):
         return browserid.utils.bundle_certs_and_assertion([cert], assertion)
 
 
-class PasswordForgotToken(object):
+class PasswordForgotToken:
 
     def __init__(self, client, email, token, ttl=0, code_length=16,
                  tries_remaining=1):
@@ -616,7 +615,7 @@ class PasswordForgotToken(object):
         return resp
 
 
-class StretchedPassword(object):
+class StretchedPassword:
 
     def __init__(self, version, email, salt=None, password=None, stretchpwd=None):
         self.version = version

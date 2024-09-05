@@ -35,7 +35,6 @@ dependencies = [
   "pybrowserid",
   "pyjwt",
   "requests>=2.4.2",
-  "six>=1.14",
 ]
 
 urls.Homepage = "https://github.com/mozilla/PyFxA"
