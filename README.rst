@@ -323,7 +323,20 @@ To run tests:
 
     $ pytest
 
+If you'd like to run all supported versions of Python, install `hatch` via `pip` or `pipx`:
 
+.. code:: bash
 
+    $ pipx install hatch
 
+Once installed you can run the tests in all supported Python environments with:
 
+.. code:: bash
+
+    $ hatch run test:cov
+
+To run the tests with specific Python version you can specify this with hatch:
+
+.. code:: bash
+
+    $ hatch run +py=3.10 test:cov
