@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
 
     steps:
     - name: Check out code
@@ -29,7 +29,8 @@ jobs:
         pip install .
         pip install '.[dev]'
 
-    - name: Run tests
-      run: |
-        pytest
+    - name: Install Hatch
+      run: pip install --upgrade hatch
 
+    - name: Run tests
+      run: hatch run +py=${{ matrix.python-version }} test:cov

@@ -16,6 +16,7 @@ license = "MPL-2.0"
 authors = [
   { name = "Mozilla Services", email = "services-dev@mozilla.org" },
 ]
+requires-python = ">=3.8"
 classifiers = [
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
@@ -37,16 +38,6 @@ dependencies = [
   "six>=1.14",
 ]
 
-optional-dependencies.dev = [
-  "grequests",
-  "parameterized",
-  # Latest releases of pyotp do not support python2.
-  "pyotp",
-  "pytest",
-  "pytest-cov",
-  "pytest-runner",
-  "responses",
-]
 urls.Homepage = "https://github.com/mozilla/PyFxA"
 scripts.fxa-client = "fxa.__main__:main"
 entry-points."httpie.plugins.auth.v1".httpie_fxa-bearer = "fxa.plugins.requests:FxABearerTokenPlugin"
@@ -66,6 +57,24 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = [ "fxa" ]
+
+[tool.hatch.envs.test]
+dependencies = [
+  "coverage[toml]>=6.5",
+  "grequests",
+  "parameterized",
+  "pyotp",
+  "pytest",
+  "pytest-cov",
+  "responses",
+]
+[tool.hatch.envs.test.scripts]
+test = "pytest {args:fxa/tests}"
+cov = "pytest --cov-config=pyproject.toml --cov=fxa/ --cov-report term-missing {args:fxa/tests}"
+
+[[tool.hatch.envs.test.matrix]]
+# Note: When changing these, also update the .github/workflows/test.yml file.
+python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
 [tool.flake8]
 max-line-length = 99
