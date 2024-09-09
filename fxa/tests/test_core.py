@@ -3,8 +3,7 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import time
 
-from six import binary_type
-from six.moves.urllib.parse import urlparse
+from urllib.parse import urlparse
 
 import pyotp
 import pytest
@@ -112,7 +111,7 @@ class TestCoreClient(unittest.TestCase):
     def test_get_random_bytes(self):
         b1 = self.client.get_random_bytes()
         b2 = self.client.get_random_bytes()
-        self.assertTrue(isinstance(b1, binary_type))
+        self.assertTrue(isinstance(b1, bytes))
         self.assertNotEqual(b1, b2)
 
     @pytest.mark.skip(reason="Gets rate limited.")
@@ -345,7 +344,7 @@ class TestCoreClientSession(unittest.TestCase):
     def test_get_random_bytes(self):
         b1 = self.session.get_random_bytes()
         b2 = self.session.get_random_bytes()
-        self.assertTrue(isinstance(b1, binary_type))
+        self.assertTrue(isinstance(b1, bytes))
         self.assertNotEqual(b1, b2)
 
     @pytest.mark.skip(reason="Endpoint no longer supported.")
@@ -396,7 +395,7 @@ class TestCoreClientSession(unittest.TestCase):
         self.assertEqual(data["status"], "okay")
         expected_issuer = urlparse(self.session.server_url).hostname
         self.assertEqual(data["issuer"], expected_issuer)
-        expected_email = "{0}@{1}".format(self.session.uid, expected_issuer)
+        expected_email = f"{self.session.uid}@{expected_issuer}"
         self.assertEqual(data["email"], expected_email)
 
     @pytest.mark.skip(reason="Endpoint no longer supported.")

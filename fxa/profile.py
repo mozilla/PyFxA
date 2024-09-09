@@ -1,7 +1,6 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-from six import string_types
 
 from fxa._utils import APIClient, BearerTokenAuth
 from fxa.constants import PRODUCTION_URLS
@@ -13,11 +12,11 @@ VERSION_SUFFIXES = ("/v1",)
 DEFAULT_CACHE_EXPIRY = 300
 
 
-class Client(object):
+class Client:
     """Client for talking to the Firefox Accounts Profile server"""
 
     def __init__(self, server_url=DEFAULT_SERVER_URL):
-        if not isinstance(server_url, string_types):
+        if not isinstance(server_url, str):
             self.apiclient = server_url
         else:
             server_url = server_url.rstrip('/')

@@ -1,14 +1,12 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-from __future__ import unicode_literals
 import os
 import re
 
 from parameterized import parameterized
 
 from binascii import unhexlify
-from six import text_type
 
 from fxa.crypto import (
     quick_stretch_password,
@@ -44,7 +42,7 @@ class TestCoreCrypto(unittest.TestCase):
     @parameterized.expand([
        (
            1,
-           u"andr\xe9@example.org",
+           "andr\xe9@example.org",
            "e4e8889bd8bd61ad 6de6b95c059d56e7 b50dacdaf62bd846 44af7e2add84345d",
            "247b675ffb4c4631 0bc87e26d712153a be5e1c90ef00a478 4594f97ef54f2375",
            "de6a2648b78284fc b9ffa81ba9580330 9cfba7af583c01a8 a1a63e567234dd28"
@@ -65,7 +63,7 @@ class TestCoreCrypto(unittest.TestCase):
         expected_authpw,
         expected_ubkey
     ):
-        pwd = u"p\xe4ssw\xf6rd"
+        pwd = "p\xe4ssw\xf6rd"
         self.assertEqual(pwd.encode("utf8"), dehexlify("""
             70c3a4737377c3b6 7264
         """))
@@ -113,9 +111,9 @@ class TestCoreCrypto(unittest.TestCase):
             xor(b"shorter", b"longer string")
 
     def test_hkdf_namespace_handle_unicode_strings(self):
-        kw = hkdf_namespace(text_type("foobar"))
+        kw = hkdf_namespace("foobar")
         self.assertEqual(kw, b"identity.mozilla.com/picl/v1/foobar")
 
     def test_hkdf_namespace_handle_bytes_strings(self):
-        kw = hkdf_namespace("foobar".encode('utf-8'))
+        kw = hkdf_namespace(b"foobar")
         self.assertEqual(kw, b"identity.mozilla.com/picl/v1/foobar")

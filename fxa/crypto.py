@@ -18,8 +18,6 @@ import re
 import browserid.jwt
 from browserid.utils import to_hex
 
-from six import int2byte, text_type
-from six.moves import xrange
 
 SALT_NAMESPACE = "identity.mozilla.com/picl/v1/"
 KEY_STRETCH_NAMESPACE_V2 = "quickStretchV2:"
@@ -50,10 +48,10 @@ def hkdf_namespace(name, extra=None):
     specific URI to the given name components to generate a (hopefully)
     globally-unique info string.
     """
-    if isinstance(name, text_type):
+    if isinstance(name, str):
         name = name.encode("utf8")
 
-    if isinstance(extra, text_type):
+    if isinstance(extra, str):
         extra = extra.encode('utf8')
 
     kw = SALT_NAMESPACE.encode('utf8') + name
@@ -83,7 +81,7 @@ def check_salt(version, salt):
     if not salt:
         raise ValueError("salt must be provided")
 
-    if not isinstance(salt, text_type):
+    if not isinstance(salt, str):
         salt = salt.decode("utf8")
 
     if version == 2:
@@ -101,7 +99,7 @@ def check_salt(version, salt):
 
 
 def check_password(password):
-    if not isinstance(password, text_type):
+    if not isinstance(password, str):
         password = password.decode("utf8")
     return password.encode("utf8")
 
@@ -187,8 +185,8 @@ def verify_hmac(key, data, signature):
 def xor(data1, data2):
     if len(data1) != len(data2):
         raise ValueError("cannot xor strings of different length")
-    bs = (ord(data1[i:i+1]) ^ ord(data2[i:i+1]) for i in xrange(len(data1)))
-    return b"".join(int2byte(b) for b in bs)
+    bs = (ord(data1[i:i+1]) ^ ord(data2[i:i+1]) for i in range(len(data1)))
+    return b"".join(bytes((b,)) for b in bs)
 
 
 def bundle(key, namespace, payload):

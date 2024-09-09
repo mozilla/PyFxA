@@ -6,8 +6,7 @@ import json
 import os
 import base64
 import hashlib
-from six import string_types
-from six.moves.urllib.parse import urlparse, urlunparse, urlencode, parse_qs
+from urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
 import jwt
 from fxa.cache import MemoryCache, DEFAULT_CACHE_EXPIRY
@@ -21,7 +20,7 @@ VERSION_SUFFIXES = ("/v1",)
 TOKEN_HMAC_SECRET = 'PyFxA Token Cache Hmac Secret'
 
 
-class Client(object):
+class Client:
     """Client for talking to the Firefox Accounts OAuth server"""
 
     def __init__(self, client_id=None, client_secret=None, server_url=None,
@@ -33,7 +32,7 @@ class Client(object):
         server_url = server_url.rstrip('/')
         if not server_url.endswith(VERSION_SUFFIXES):
             server_url += VERSION_SUFFIXES[0]
-        if isinstance(server_url, string_types):
+        if isinstance(server_url, str):
             self.apiclient = APIClient(server_url)
         else:
             self.apiclient = server_url
@@ -53,7 +52,7 @@ class Client(object):
         return self.apiclient.server_url
 
     def _get_identity_assertion(self, sessionOrAssertion, client_id=None):
-        if isinstance(sessionOrAssertion, string_types):
+        if isinstance(sessionOrAssertion, str):
             return sessionOrAssertion
         if client_id is None:
             client_id = self.client_id
@@ -66,7 +65,7 @@ class Client(object):
         """Get the OAuth client metadata for a given client_id."""
         if client_id is None:
             client_id = self.client_id
-        return self.apiclient.get("/client/{0}".format(client_id))
+        return self.apiclient.get(f"/client/{client_id}")
 
     def get_redirect_url(self, state="", redirect_uri=None, scope=None,
                          action=None, email=None, client_id=None,
@@ -187,8 +186,7 @@ class Client(object):
             raise OutOfProtocolError(error_msg)
 
         if state != query_params["state"][0]:
-            error_msg = "state mismatch in OAuth response (wanted: '{}', got: '{}')".format(
-                state, query_params["state"][0])
+            error_msg = f"state mismatch in OAuth response (wanted: '{state}', got: '{query_params['state'][0]}')"
             raise OutOfProtocolError(error_msg)
 
         try:
@@ -315,8 +313,7 @@ class Client(object):
                 if resp.get(k) is None
             ])
             if missing_attrs:
-                error_msg = '{0} missing in OAuth response'.format(
-                    missing_attrs)
+                error_msg = f'{missing_attrs} missing in OAuth response'
                 raise OutOfProtocolError(error_msg)
 
             if scope is not None:
