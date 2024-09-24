@@ -312,31 +312,31 @@ The basic requirements are:
 
 To get started:
 
-.. code-block::
+.. code:: bash
 
-    $ pip install '.[dev]'
-    $ pip install .
+    pip install '.[dev]'
+    pip install .
 
 To run tests:
 
-.. code-block::
+.. code:: bash
 
-    $ pytest
+    pytest
 
 If you'd like to run all supported versions of Python, install `hatch` via `pip` or `pipx`:
 
 .. code:: bash
 
-    $ pipx install hatch
+    pipx install hatch
 
 Once installed you can run the tests in all supported Python environments with:
 
 .. code:: bash
 
-    $ hatch run test:cov
+    hatch run test:cov
 
 To run the tests with specific Python version you can specify this with hatch:
 
 .. code:: bash
 
-    $ hatch run +py=3.10 test:cov
+    hatch run +py=3.10 test:cov
