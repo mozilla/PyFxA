@@ -3,6 +3,12 @@ CHANGELOG
 
 This document describes changes between each past release.
 
+0.7.9 (2024-09-26)
+==================
+
+- Add ability to call APIs with the auth token required for the
+  new Mozilla Accounts server.
+
 0.7.8 (2024-03-14)
 ==================
 

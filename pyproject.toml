@@ -6,6 +6,7 @@ requires = [ "hatchling" ]
 [project]
 name = "pyfxa"
 description = "Firefox Accounts client library for Python"
+version = "0.7.9"
 readme = "README.rst"
 keywords = [
   "accounts",
