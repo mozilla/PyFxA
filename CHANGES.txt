@@ -3,6 +3,14 @@ CHANGELOG
 
 This document describes changes between each past release.
 
+0.7.9 (2024-09-26)
+==================
+
+- Python3 support
+- Add support for v2 password hashes
+- Updated to pyproject.toml
+- Updated libraries
+
 0.7.8 (2024-03-14)
 ==================
 
