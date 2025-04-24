@@ -12,8 +12,7 @@ import jwt
 from fxa.cache import MemoryCache, DEFAULT_CACHE_EXPIRY
 from fxa.constants import PRODUCTION_URLS
 from fxa.errors import OutOfProtocolError, ScopeMismatchError, TrustError
-from fxa._utils import APIClient, scope_matches, get_hmac
-
+from fxa._utils import APIClient, scope_matches, get_hmac, HawkTokenAuth
 
 DEFAULT_SERVER_URL = PRODUCTION_URLS['oauth']
 VERSION_SUFFIXES = ("/v1",)
@@ -50,16 +49,6 @@ class Client:
     @property
     def server_url(self):
         return self.apiclient.server_url
-
-    def _get_identity_assertion(self, sessionOrAssertion, client_id=None):
-        if isinstance(sessionOrAssertion, str):
-            return sessionOrAssertion
-        if client_id is None:
-            client_id = self.client_id
-        return sessionOrAssertion.get_identity_assertion(
-            audience=self.server_url,
-            service=client_id
-        )
 
     def get_client_metadata(self, client_id=None):
         """Get the OAuth client metadata for a given client_id."""
@@ -132,28 +121,25 @@ class Client:
 
         return resp
 
-    def authorize_code(self, sessionOrAssertion, scope=None, client_id=None,
+    def authorize_code(self, session, scope=None, client_id=None,
                        code_challenge=None, code_challenge_method=None):
-        """Trade an identity assertion for an oauth authorization code.
+        """Trade a session for an oauth authorization code.
 
-        This method takes an identity assertion for a user and uses it to
+        This method takes a session for a user and uses it to
         generate an oauth authentication code.  This code can in turn be
         traded for a full-blown oauth token.
 
-        Note that the authorize_token() method does the same thing but skips
-        the intermediate step of using a short-lived code.  You should prefer
-        that method if the registered OAuth client_id has `canGrant` permission.
-
-        :param sessionOrAssertion: an identity assertion for the target user,
-                                   or an auth session to use to make one.
+        :param session: an auth session to use.
         :param scope: optional scope to be provided by the token.
         :param client_id: the string generated during FxA client registration.
         :param code_challenge: optional PKCE code challenge.
+        :param code_challenge_method: optional PKCE code challenge method.
         """
+        auth = HawkTokenAuth(session.token, "sessionToken", self.apiclient)
+
         if client_id is None:
             client_id = self.client_id
-        assertion = self._get_identity_assertion(sessionOrAssertion, client_id)
-        url = "/authorization"
+        url = "/oauth/authorization"
 
         # Although not relevant in this scenario from a security perspective,
         # we generate a random 'state' and check the returned redirect URL
@@ -162,7 +148,6 @@ class Client:
 
         body = {
             "client_id": client_id,
-            "assertion": assertion,
             "state": state
         }
         if scope is not None:
@@ -170,7 +155,7 @@ class Client:
         if code_challenge is not None:
             body["code_challenge"] = code_challenge
             body["code_challenge_method"] = code_challenge_method or "S256"
-        resp = self.apiclient.post(url, body)
+        resp = self.apiclient.post(url, body, auth=auth)
 
         if "redirect" not in resp:
             error_msg = "redirect missing in OAuth response"
@@ -195,31 +180,16 @@ class Client:
             error_msg = "code missing in OAuth redirect url"
             raise OutOfProtocolError(error_msg)
 
-    def authorize_token(self, sessionOrAssertion, scope=None, client_id=None):
-        """Trade an identity assertion for an oauth token.
+    def authorize_token(self, session, scope=None, client_id=None):
+        """Trade session token for an oauth token.
 
-        This method takes an identity assertion for a user and uses it to
-        generate an oauth token. The client_id must have implicit grant
-        privileges.
-
-        :param sessionOrAssertion: an identity assertion for the target user,
-                                   or an auth session to use to make one.
+        :param session: an auth session.
         :param scope: optional scope to be provided by the token.
         :param client_id: the string generated during FxA client registration.
         """
-        if client_id is None:
-            client_id = self.client_id
-        assertion = self._get_identity_assertion(sessionOrAssertion, client_id)
-        url = "/authorization"
-        body = {
-            "client_id": client_id,
-            "assertion": assertion,
-            "response_type": "token",
-            "state": "x",  # state is required, but we don't use it
-        }
-        if scope is not None:
-            body["scope"] = scope
-        resp = self.apiclient.post(url, body)
+        (challenge, verifier) = self.generate_pkce_challenge()
+        code = self.authorize_code(session, scope, client_id, **challenge)
+        resp = self.trade_code(code, **verifier)
 
         if 'access_token' not in resp:
             error_msg = 'access_token missing in OAuth response'

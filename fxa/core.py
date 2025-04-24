@@ -5,8 +5,6 @@
 from binascii import unhexlify, hexlify
 from secrets import token_bytes
 from urllib.parse import quote as urlquote
-import browserid.jwt
-import browserid.utils
 
 from fxa.errors import ClientError
 from fxa._utils import (
@@ -18,7 +16,6 @@ from fxa._utils import (
 from fxa.constants import PRODUCTION_URLS
 from fxa.crypto import (
     create_salt,
-    generate_keypair,
     quick_stretch_password,
     stretch_password,
     unwrap_keys,
@@ -29,10 +26,6 @@ from fxa.crypto import (
 
 DEFAULT_SERVER_URL = PRODUCTION_URLS['authentication']
 VERSION_SUFFIXES = ("/v1",)
-
-DEFAULT_ASSERTION_DURATION = 60
-DEFAULT_CERT_DURATION = 1000 * 60 * 30  # half an hour, in milliseconds
-
 
 class Client:
     """Client for talking to the Firefox Accounts auth server."""
@@ -422,7 +415,7 @@ class Session:
 
     def __init__(self, client, email, stretchpwd, uid, token,
                  key_fetch_token=None, verified=False, verificationMethod=None,
-                 auth_timestamp=0, cert_keypair=None):
+                 auth_timestamp=0):
         self.client = client
         self.email = email
         self.uid = uid
@@ -430,7 +423,6 @@ class Session:
         self.verified = verified
         self.verificationMethod = verificationMethod
         self.auth_timestamp = auth_timestamp
-        self.cert_keypair = None
         self.keys = None
         self._auth = HawkTokenAuth(token, "sessionToken", self.apiclient)
         self._key_fetch_token = key_fetch_token
@@ -532,18 +524,6 @@ class Session:
 
         return resp["success"]
 
-    def sign_certificate(self, public_key, duration=DEFAULT_CERT_DURATION,
-                         service=None):
-        body = {
-            "publicKey": public_key,
-            "duration": duration,
-        }
-        url = "/certificate/sign"
-        if service is not None:
-            url += "?service=" + urlquote(service)
-        resp = self.apiclient.post(url, body, auth=self._auth)
-        return resp["cert"]
-
     def change_password(self, oldpwd, newpwd,
                         oldstretchpwd=None, newstretchpwd=None):
         return self.client.change_password(self.email, oldpwd, newpwd,
@@ -558,33 +538,6 @@ class Session:
     def get_random_bytes(self):
         # XXX TODO: sanity-check the schema of the returned response
         return self.client.get_random_bytes()
-
-    def get_identity_assertion(self, audience,
-                               duration=DEFAULT_ASSERTION_DURATION,
-                               exp=None,
-                               keypair=None,
-                               **kwds):
-        if exp is None:
-            exp = int((self.apiclient.server_curtime() + duration) * 1000)
-        if keypair is None:
-            keypair = self.cert_keypair
-            if keypair is None:
-                keypair = generate_keypair()
-                self.cert_keypair = keypair
-        public_key, private_key = keypair
-        # Get a signed identity certificate for the public key.
-        # XXX TODO: cache this for future re-use?
-        # For now we just get a fresh signature every time, which is
-        # perfectly valid but costly if done frequently.
-        cert = self.sign_certificate(public_key, duration * 1000, **kwds)
-        # Generate assertion using the private key.
-        assertion = {
-            "exp": exp,
-            "aud": audience,
-        }
-        assertion = browserid.jwt.generate(assertion, private_key)
-        # Bundle them into a full BrowserID assertion.
-        return browserid.utils.bundle_certs_and_assertion([cert], assertion)
 
 
 class PasswordForgotToken:

@@ -291,30 +291,30 @@ class TestAuthClientAuthorizeCode(unittest.TestCase):
 
         self.client = Client("abc", "xyz", server_url=self.server_url)
         responses.add_callback(responses.POST,
-                               'https://server/v1/authorization',
+                               'https://server/v1/oauth/authorization',
                                callback=authorization_callback,
                                content_type='application/json')
 
     @responses.activate
     def test_authorize_code_with_default_arguments(self):
-        assertion = "A_FAKE_ASSERTION"
-        code = self.client.authorize_code(assertion)
+        session = mock.Mock()
+        session.token = "1234"
+        code = self.client.authorize_code(session)
         self.assertEqual(code, "qed")
         req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEqual(req_body, {
-            "assertion": assertion,
             "client_id": self.client.client_id,
             "state": AnyStringValue(),
         })
 
     @responses.activate
     def test_authorize_code_with_explicit_scope(self):
-        assertion = "A_FAKE_ASSERTION"
-        code = self.client.authorize_code(assertion, scope="profile:email")
+        session = mock.Mock()
+        session.token = "1234"
+        code = self.client.authorize_code(session, scope="profile:email")
         self.assertEqual(code, "qed")
         req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEqual(req_body, {
-            "assertion": assertion,
             "client_id": self.client.client_id,
             "state": AnyStringValue(),
             "scope": "profile:email",
@@ -322,29 +322,29 @@ class TestAuthClientAuthorizeCode(unittest.TestCase):
 
     @responses.activate
     def test_authorize_code_with_explicit_client_id(self):
-        assertion = "A_FAKE_ASSERTION"
-        code = self.client.authorize_code(assertion, client_id="cba")
+        session = mock.Mock()
+        session.token = "1234"
+        code = self.client.authorize_code(session, client_id="cba")
         self.assertEqual(code, "qed")
         req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEqual(req_body, {
-            "assertion": assertion,
             "client_id": "cba",
             "state": AnyStringValue(),
         })
 
     @responses.activate
     def test_authorize_code_with_pkce_challenge(self):
-        assertion = "A_FAKE_ASSERTION"
+        session = mock.Mock()
+        session.token = "1234"
         challenge, verifier = self.client.generate_pkce_challenge()
         self.assertEqual(sorted(challenge),
                          ["code_challenge", "code_challenge_method"])
         self.assertEqual(sorted(verifier),
                          ["code_verifier"])
-        code = self.client.authorize_code(assertion, **challenge)
+        code = self.client.authorize_code(session, **challenge)
         self.assertEqual(code, "qed")
         req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEqual(req_body, {
-            "assertion": assertion,
             "client_id": self.client.client_id,
             "state": AnyStringValue(),
             "code_challenge": challenge["code_challenge"],
@@ -354,16 +354,11 @@ class TestAuthClientAuthorizeCode(unittest.TestCase):
     @responses.activate
     def test_authorize_code_with_session_object(self):
         session = mock.Mock()
-        session.get_identity_assertion.return_value = "IDENTITY"
+        session.token = "1234"
         code = self.client.authorize_code(session)
-        session.get_identity_assertion.assert_called_once_with(
-            audience=TEST_SERVER_URL,
-            service=self.client.client_id
-        )
         self.assertEqual(code, "qed")
         req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEqual(req_body, {
-            "assertion": "IDENTITY",
             "client_id": self.client.client_id,
             "state": AnyStringValue(),
         })
@@ -374,71 +369,91 @@ class TestAuthClientAuthorizeToken(unittest.TestCase):
     server_url = TEST_SERVER_URL
 
     def setUp(self):
+        def authorization_callback(request):
+            data = json.loads(_decoded(request.body))
+            headers = {
+                'Content-Type': 'application/json'
+            }
+            body = {
+                'redirect': f'https://relier/page?code=qed&state={data["state"]}'
+            }
+            return (200, headers, json.dumps(body))
+
         self.client = Client("abc", "xyz", server_url=self.server_url)
+        responses.add_callback(responses.POST,
+                               'https://server/v1/oauth/authorization',
+                               callback=authorization_callback,
+                               content_type='application/json')
+
+        body = '{"access_token": "izatoken"}'
         responses.add(responses.POST,
-                      'https://server/v1/authorization',
-                      body='{"access_token": "izatoken"}',
+                      'https://server/v1/token',
+                      body=body,
                       content_type='application/json')
-        add_jwks_response()
 
     @responses.activate
     def test_authorize_token_with_default_arguments(self):
-        assertion = "A_FAKE_ASSERTION"
-        token = self.client.authorize_token(assertion)
+        session = mock.Mock()
+        session.token = "1234"
+        token = self.client.authorize_token(session)
         self.assertEqual(token, "izatoken")
-        req_body = json.loads(_decoded(responses.calls[0].request.body))
-        self.assertEqual(req_body, {
-            "assertion": assertion,
+        authorize_req_body = json.loads(_decoded(responses.calls[0].request.body))
+        self.assertEqual(authorize_req_body, {
             "client_id": self.client.client_id,
             "state": AnyStringValue(),
-            "response_type": "token",
+            "code_challenge":AnyStringValue(),
+            "code_challenge_method": AnyStringValue(),
+        })
+        token_req_body = json.loads(_decoded(responses.calls[1].request.body))
+        self.assertEqual(token_req_body, {
+            "client_id": self.client.client_id,
+            "client_secret": AnyStringValue(),
+            "code": "qed",
+            "code_verifier": AnyStringValue(),
         })
 
     @responses.activate
     def test_authorize_token_with_explicit_scope(self):
-        assertion = "A_FAKE_ASSERTION"
-        token = self.client.authorize_token(assertion, scope="storage")
+        session = mock.Mock()
+        session.token = "1234"
+        token = self.client.authorize_token(session, scope="storage")
         self.assertEqual(token, "izatoken")
         req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEqual(req_body, {
-            "assertion": assertion,
             "client_id": self.client.client_id,
             "state": AnyStringValue(),
-            "response_type": "token",
             "scope": "storage",
+            "code_challenge": AnyStringValue(),
+            "code_challenge_method": AnyStringValue(),
         })
 
     @responses.activate
     def test_authorize_token_with_explicit_client_id(self):
-        assertion = "A_FAKE_ASSERTION"
-        token = self.client.authorize_token(assertion, client_id="cba")
+        session = mock.Mock()
+        session.token = "1234"
+        token = self.client.authorize_token(session, client_id="cba")
         self.assertEqual(token, "izatoken")
         req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEqual(req_body, {
-            "assertion": assertion,
             "client_id": "cba",
             "state": AnyStringValue(),
-            "response_type": "token",
+            "code_challenge": AnyStringValue(),
+            "code_challenge_method": AnyStringValue(),
         })
 
     @responses.activate
     def test_authorize_token_with_session_object(self):
         session = mock.Mock()
-        session.get_identity_assertion.return_value = "IDENTITY"
+        session.token = "1234"
         token = self.client.authorize_token(session)
-        session.get_identity_assertion.assert_called_once_with(
-            audience=TEST_SERVER_URL,
-            service=self.client.client_id
-        )
         self.assertEqual(token, "izatoken")
         req_body = json.loads(_decoded(responses.calls[0].request.body))
         self.assertEqual(req_body, {
-            "assertion": "IDENTITY",
             "client_id": self.client.client_id,
             "state": AnyStringValue(),
-            "response_type": "token",
+            "code_challenge": AnyStringValue(),
+            "code_challenge_method": AnyStringValue(),
         })
-
 
 class TestScopeMatch(unittest.TestCase):
     def test_always_matches_if_required_is_empty(self):

@@ -5,8 +5,6 @@ from fxa.tests.utils import unittest
 from fxa.tests.mock_utilities import (
     mock, mocked_core_client, mocked_oauth_client)
 from fxa.tools.bearer import get_bearer_token
-from fxa.tools.browserid import get_browserid_assertion
-
 
 class TestGetBearerToken(unittest.TestCase):
     def test_account_server_url_is_mandatory(self):
@@ -52,22 +50,3 @@ class TestGetBearerToken(unittest.TestCase):
             core_client.return_value.login.return_value,
             'profile'
         )
-
-
-class TestGetBrowserIDAssertion(unittest.TestCase):
-    def test_account_server_url_is_mandatory(self):
-        try:
-            get_browserid_assertion("email", "password", "audience")
-        except ValueError as e:
-            self.assertEqual("%s" % e, 'Please define an account_server_url.')
-        else:
-            self.fail("ValueError not raised")
-
-    @mock.patch('fxa.core.Client',
-                return_value=mocked_core_client())
-    def test_duration_and_audience_are_used(self, core_client):
-        get_browserid_assertion("email", "password", "audience",
-                                account_server_url="account_server_url",
-                                duration=3600 * 1000)
-        core_client().login().get_identity_assertion.assert_called_with(
-            audience='audience', duration=3600 * 1000)
