@@ -5,8 +5,6 @@
 from binascii import unhexlify, hexlify
 from secrets import token_bytes
 from urllib.parse import quote as urlquote
-import browserid.jwt
-import browserid.utils
 
 from fxa.errors import ClientError
 from fxa._utils import (
@@ -18,7 +16,6 @@ from fxa._utils import (
 from fxa.constants import PRODUCTION_URLS
 from fxa.crypto import (
     create_salt,
-    generate_keypair,
     quick_stretch_password,
     stretch_password,
     unwrap_keys,
@@ -558,33 +555,6 @@ class Session:
     def get_random_bytes(self):
         # XXX TODO: sanity-check the schema of the returned response
         return self.client.get_random_bytes()
-
-    def get_identity_assertion(self, audience,
-                               duration=DEFAULT_ASSERTION_DURATION,
-                               exp=None,
-                               keypair=None,
-                               **kwds):
-        if exp is None:
-            exp = int((self.apiclient.server_curtime() + duration) * 1000)
-        if keypair is None:
-            keypair = self.cert_keypair
-            if keypair is None:
-                keypair = generate_keypair()
-                self.cert_keypair = keypair
-        public_key, private_key = keypair
-        # Get a signed identity certificate for the public key.
-        # XXX TODO: cache this for future re-use?
-        # For now we just get a fresh signature every time, which is
-        # perfectly valid but costly if done frequently.
-        cert = self.sign_certificate(public_key, duration * 1000, **kwds)
-        # Generate assertion using the private key.
-        assertion = {
-            "exp": exp,
-            "aud": audience,
-        }
-        assertion = browserid.jwt.generate(assertion, private_key)
-        # Bundle them into a full BrowserID assertion.
-        return browserid.utils.bundle_certs_and_assertion([cert], assertion)
 
 
 class PasswordForgotToken:

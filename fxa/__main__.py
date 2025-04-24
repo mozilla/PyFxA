@@ -10,7 +10,6 @@ from fxa.constants import ENVIRONMENT_URLS
 from fxa.errors import ClientError
 from fxa.tools.create_user import create_new_fxa_account
 from fxa.tools.bearer import get_bearer_token
-from fxa.tools.browserid import get_browserid_assertion
 from fxa.tools.unblock import send_unblock_code
 
 DEFAULT_CLIENT_ID = "5882386c6d801776"  # Firefox dev Client ID
@@ -29,11 +28,6 @@ def main(args=None):
     parser.add_argument('--bearer',
                         help='Generate a Bearer token',
                         dest='bearer',
-                        action='store_true')
-
-    parser.add_argument('--browserid', '--bid',
-                        help='Generate a BrowserID assertion',
-                        dest='browserid',
                         action='store_true')
     parser.add_argument('--unblock-account',
                         help='Generate an unblock code for the specified email',
@@ -73,6 +67,7 @@ def main(args=None):
                         choices=ENVIRONMENT_URLS.keys(),
                         default=DEFAULT_ENV,
                         required=False)
+
     parser.add_argument('--account-server',
                         help='Firefox Account server URL',
                         dest='account_server_url',
@@ -104,17 +99,6 @@ def main(args=None):
                         dest='scopes',
                         required=False,
                         default='profile')
-
-    parser.add_argument('--audience',
-                        help='Firefox BrowserID assertion audience.',
-                        dest='audience',
-                        required=False)
-
-    parser.add_argument('--duration',
-                        help='Firefox BrowserID assertion duration.',
-                        dest='duration',
-                        required=False,
-                        default='3600')
 
     parser.add_argument('--user-email-prefix', '--prefix',
                         help='Firefox Account user creation email prefix.',
@@ -225,31 +209,6 @@ def main(args=None):
         print('# Client ID: %s' % client_id, file=fd)
         print('# ---------------------------', file=fd)
         print('export OAUTH_BEARER_TOKEN="%s"\n' % token, file=fd)
-
-    if args['browserid']:
-        # Generate a BrowserID assertion for the user and write it into a file.
-        audience = args['audience'] or token_server_url
-        duration = int(args['duration'])
-
-        logger.info('Creating the token.')
-
-        try:
-            bid_assertion, client_state = get_browserid_assertion(
-                email, password, audience, account_server_url, duration,
-                unblock_code)
-        except ClientError as e:
-            logger.error(e)
-            sys.exit(1)
-
-        logger.info('Token created.')
-
-        print('# ---- BROWSER ID ASSERTION INFO ----', file=fd)
-        print('# User: %s' % email, file=fd)
-        print('# Audience: %s' % audience, file=fd)
-        print('# Account: %s' % account_server_url, file=fd)
-        print('# ------------------------------------', file=fd)
-        print('export FXA_BROWSERID_ASSERTION="%s"' % bid_assertion, file=fd)
-        print('export FXA_CLIENT_STATE="%s"\n' % client_state, file=fd)
 
     if fd_is_to_close:
         fd.close()

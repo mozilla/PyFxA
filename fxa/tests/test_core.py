@@ -9,10 +9,6 @@ import pyotp
 import pytest
 from parameterized import parameterized_class
 
-from browserid import jwt
-import browserid.tests.support
-import browserid.utils
-
 import fxa.errors
 from fxa.core import Client, StretchedPassword
 
@@ -347,26 +343,6 @@ class TestCoreClientSession(unittest.TestCase):
         self.assertTrue(isinstance(b1, bytes))
         self.assertNotEqual(b1, b2)
 
-    @pytest.mark.skip(reason="Endpoint no longer supported.")
-    def test_sign_certificate(self):
-        email = self.acct.email
-        pubkey = browserid.tests.support.get_keypair(email)[0]
-        cert = self.session.sign_certificate(pubkey)
-        issuer = browserid.utils.decode_json_bytes(cert.split(".")[1])["iss"]
-        expected_issuer = urlparse(self.client.server_url).hostname
-        self.assertEqual(issuer, expected_issuer)
-
-    @pytest.mark.skip(reason="Endpoint no longer supported.")
-    def test_sign_certificate_handles_duration(self):
-        email = self.acct.email
-        pubkey = browserid.tests.support.get_keypair(email)[0]
-        millis = int(round(time.time() * 1000))
-        cert = self.session.sign_certificate(pubkey, duration=4000)
-        cert_exp = browserid.utils.decode_json_bytes(cert.split(".")[1])["exp"]
-        ttl = round(float(cert_exp - millis) / 1000)
-        self.assertGreaterEqual(ttl, 2)
-        self.assertLessEqual(ttl, 30)
-
     def test_change_password(self):
         # Change the password.
         newpwd = mutate_one_byte(DUMMY_PASSWORD)
@@ -387,45 +363,6 @@ class TestCoreClientSession(unittest.TestCase):
         keys = session2.fetch_keys()
         self.assertEqual(self.session.keys[0], keys[0])
         self.assertEqual(self.session.keys[1], keys[1])
-
-    @pytest.mark.skip(reason="Endpoint no longer supported.")
-    def test_get_identity_assertion(self):
-        assertion = self.session.get_identity_assertion("http://example.com")
-        data = browserid.verify(assertion, audience="http://example.com")
-        self.assertEqual(data["status"], "okay")
-        expected_issuer = urlparse(self.session.server_url).hostname
-        self.assertEqual(data["issuer"], expected_issuer)
-        expected_email = f"{self.session.uid}@{expected_issuer}"
-        self.assertEqual(data["email"], expected_email)
-
-    @pytest.mark.skip(reason="Endpoint no longer supported.")
-    def test_get_identity_assertion_handles_duration(self):
-        millis = int(round(time.time() * 1000))
-        bid_assertion = self.session.get_identity_assertion(
-            "http://example.com", 1234)
-        cert, assertion = browserid.utils.unbundle_certs_and_assertion(
-            bid_assertion)
-        cert = jwt.parse(cert[0]).payload
-        assertion = jwt.parse(assertion).payload
-
-        # Validate cert expiry
-        ttl = round(float(cert['exp'] - millis) / 1000)
-        self.assertGreaterEqual(ttl, 1230)
-        self.assertLessEqual(ttl, 1260)
-
-        # Validate assertion expiry
-        ttl = round(float(assertion['exp'] - millis) / 1000)
-        self.assertGreaterEqual(ttl, 1230)
-        self.assertLessEqual(ttl, 1260)
-
-    @pytest.mark.skip(reason="Endpoint no longer supported.")
-    def test_get_identity_assertion_accepts_service(self):
-        # We can't observe any side-effects of sending the service query param,
-        # but we can test that it doesn't error out.
-        assertion = self.session.get_identity_assertion("http://example.com",
-                                                        service="test-me")
-        data = browserid.verify(assertion, audience="http://example.com")
-        self.assertEqual(data["status"], "okay")
 
     def test_totp(self):
         resp = self.session.totp_create()
