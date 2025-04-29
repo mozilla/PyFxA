@@ -32,7 +32,6 @@ dynamic = [ "version" ]
 dependencies = [
   "cryptography",
   "hawkauthlib",
-  "pybrowserid",
   "pyjwt",
   "requests>=2.4.2",
 ]
@@ -40,7 +39,6 @@ dependencies = [
 urls.Homepage = "https://github.com/mozilla/PyFxA"
 scripts.fxa-client = "fxa.__main__:main"
 entry-points."httpie.plugins.auth.v1".httpie_fxa-bearer = "fxa.plugins.requests:FxABearerTokenPlugin"
-entry-points."httpie.plugins.auth.v1".httpie_fxa-browserid = "fxa.plugins.requests:FxABrowserIDPlugin"
 
 [tool.hatch.version]
 path = "fxa/__init__.py"

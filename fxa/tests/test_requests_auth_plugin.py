@@ -1,6 +1,5 @@
 from fxa.cache import MemoryCache
-from fxa.plugins.requests import (
-    FxABrowserIDAuth, FxABearerTokenAuth, get_cache_key, DEFAULT_CACHE_EXPIRY)
+from fxa.plugins.requests import (FxABearerTokenAuth, get_cache_key, DEFAULT_CACHE_EXPIRY)
 from fxa.tests.utils import unittest
 from fxa.tests.mock_utilities import (
     mock, mocked_core_client, mocked_oauth_client)
@@ -12,98 +11,6 @@ class Request:
         self.body = ''
         self.url = 'http://www.example.com'
         self.headers = {'Content-Type': 'application/json'}
-
-
-class TestFxABrowserIDAuth(unittest.TestCase):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.auth = FxABrowserIDAuth(email="test@restmail.com",
-                                     password="this is not a password",
-                                     with_client_state=True,
-                                     server_url="http://localhost:5000")
-
-    @mock.patch('fxa.core.Client',
-                return_value=mocked_core_client())
-    def test_audience_is_parsed(self, client_patch):
-        self.auth(Request())
-        self.assertEqual(self.auth.audience, "http://www.example.com/")
-
-    @mock.patch('fxa.core.Client',
-                return_value=mocked_core_client())
-    def test_server_url_is_passed_to_client(self, client_patch):
-        self.auth(Request())
-        client_patch.assert_called_with(server_url="http://localhost:5000")
-
-    @mock.patch('fxa.core.Client',
-                return_value=mocked_core_client())
-    def test_header_are_set_to_request(self, client_patch):
-        r = self.auth(Request())
-        self.assertIn('Authorization', r.headers)
-        self.assertTrue(r.headers['Authorization'].startswith("BrowserID"),
-                        "Authorization headers does not start with BrowserID")
-        self.assertIn('X-Client-State', r.headers)
-
-        client_patch.assert_called_with(
-            server_url="http://localhost:5000")
-
-        client_patch.return_value.login.assert_called_with(
-            "test@restmail.com",
-            "this is not a password",
-            keys=True,
-            unblock_code=None)
-
-        client_patch.return_value.login.return_value. \
-            get_identity_assertion.assert_called_with(
-                audience="http://www.example.com/", duration=3600)
-
-    @mock.patch('fxa.core.Client',
-                return_value=mocked_core_client())
-    def test_client_state_not_set_by_default(self, client_patch):
-        auth = FxABrowserIDAuth(email="test@restmail.com",
-                                password="this is not a password",
-                                server_url="http://localhost:5000")
-        r = auth(Request())
-        self.assertNotIn('X-Client-State', r.headers)
-
-    @mock.patch('fxa.core.Client',
-                return_value=mocked_core_client())
-    def test_memory_cache_is_set_by_default(self, client_patch):
-        auth = FxABrowserIDAuth(email="test@restmail.com",
-                                password="this is not a password",
-                                server_url="http://localhost:5000")
-        assert type(auth.cache) is MemoryCache
-        self.assertEqual(auth.cache.ttl, DEFAULT_CACHE_EXPIRY - 1)
-
-    @mock.patch('fxa.core.Client',
-                return_value=mocked_core_client())
-    def test_memory_cache_is_used(self, client_patch):
-        auth = FxABrowserIDAuth(email="test@restmail.com",
-                                password="this is not a password",
-                                server_url="http://localhost:5000")
-        assert type(auth.cache) is MemoryCache
-        self.assertEqual(auth.cache.ttl, DEFAULT_CACHE_EXPIRY - 1)
-
-        # First call should set the cache value
-        auth(Request())
-        self.assertEqual(client_patch.return_value.login.return_value.
-                         get_identity_assertion.call_count, 1)
-        # Second call should use the cache value
-        auth(Request())
-        self.assertEqual(client_patch.return_value.login.return_value.
-                         get_identity_assertion.call_count, 1)
-
-    @mock.patch('fxa.core.Client',
-                return_value=mocked_core_client())
-    def test_it_works_with_cache_deactivated(self, client_patch):
-        auth = FxABrowserIDAuth(email="test@restmail.com",
-                                password="this is not a password",
-                                server_url="http://localhost:5000",
-                                cache=False)
-        assert not auth.cache
-        r = auth(Request())
-        self.assertIn('Authorization', r.headers)
-
 
 class TestFxABearerTokenAuth(unittest.TestCase):
     def __init__(self, *args, **kwargs):

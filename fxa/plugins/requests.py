@@ -11,7 +11,6 @@ from urllib.parse import urlparse
 
 from fxa.cache import MemoryCache
 from fxa.constants import PRODUCTION_URLS
-from fxa.tools.browserid import get_browserid_assertion
 from fxa.tools.bearer import get_bearer_token
 
 FXA_ACCOUNT_URL = PRODUCTION_URLS['authentication']
@@ -27,86 +26,6 @@ def get_cache_key(*args):
             cache_key.update(str(key).encode('utf-8'))
         cache_key.update(b'\n')
     return cache_key.hexdigest()
-
-
-class FxABrowserIDAuth(AuthBase):
-    """Handles authentication using FxA BrowserID.
-
-    :param email:
-      The user Firefox Account email address
-
-    :param password:
-      The user Firefox Account password
-
-    :param audience:
-      The audience the assertion is valid for.
-
-    :param server_url:
-      The url of the Firefox Account server.
-
-    """
-    def __init__(self, email, password, audience=None, with_client_state=False,
-                 server_url=FXA_ACCOUNT_URL, cache=True,
-                 ttl=None):
-        self.email = email
-        self.password = password
-        self.audience = audience
-        self.with_client_state = with_client_state
-        self.server_url = server_url
-
-        self.cache = cache
-        if self.cache is True:
-            if ttl is None:
-                ttl = DEFAULT_CACHE_EXPIRY - 1
-            self.cache = MemoryCache(ttl)
-
-    def __call__(self, request):
-        if self.audience is None:
-            url = urlparse(request.url)
-            self.audience = "%s://%s/" % (url.scheme, url.netloc)
-
-        cache_key = get_cache_key(self.server_url, self.email,
-                                  self.password, self.audience)
-
-        data = None
-        if self.cache:
-            data = self.cache.get(cache_key)
-
-        if not data:
-            bid_assertion, client_state = get_browserid_assertion(
-                self.email, self.password, self.audience,
-                self.server_url, duration=DEFAULT_CACHE_EXPIRY)
-
-            if self.cache:
-                self.cache.set(cache_key,
-                               json.dumps([bid_assertion, client_state]))
-        else:
-            bid_assertion, client_state = json.loads(data)
-        request.headers['Authorization'] = "BrowserID %s" % bid_assertion
-
-        if self.with_client_state:
-            request.headers['X-Client-State'] = client_state
-        return request
-
-
-# If httpie is installed, register the Firefox Account BrowserID plugin.
-try:
-    from httpie.plugins import AuthPlugin
-except ImportError:
-    pass
-else:  # pragma: no cover
-    class FxABrowserIDPlugin(AuthPlugin):
-        name = 'Firefox Account BrowserID Auth'
-        auth_type = 'fxa-browserid'
-        description = ('Generate a BrowserID assertion from '
-                       'a Firefox Account login/password')
-
-        def get_auth(self, fxa_id, fxa_password):
-            bid_audience = os.getenv('BID_AUDIENCE')
-            with_client_state = os.getenv('BID_WITH_CLIENT_STATE', False)
-            return FxABrowserIDAuth(fxa_id, fxa_password, bid_audience,
-                                    with_client_state)
-
 
 class FxABearerTokenAuth(AuthBase):
     def __init__(self, email, password, scopes=None, client_id=None,
@@ -150,7 +69,7 @@ class FxABearerTokenAuth(AuthBase):
         return request
 
 
-# If httpie is installed, register the Firefox Account BrowserID plugin.
+# If httpie is installed, register the Firefox Account BearerToken plugin.
 try:
     from httpie.plugins import AuthPlugin
 except ImportError:

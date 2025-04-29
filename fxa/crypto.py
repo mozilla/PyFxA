@@ -15,9 +15,6 @@ from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.asymmetric import dsa
 
 import re
-import browserid.jwt
-from browserid.utils import to_hex
-
 
 SALT_NAMESPACE = "identity.mozilla.com/picl/v1/"
 KEY_STRETCH_NAMESPACE_V2 = "quickStretchV2:"
@@ -216,29 +213,6 @@ def unbundle(key, namespace, payload):
     # XOR-decrypt the ciphertext using the derived key.
     xor_key = key_material[32:]
     return xor(xor_key, ciphertext)
-
-
-def generate_keypair():
-    """Generate a new DSA keypair for use with PyBrowserID.
-
-    This function returns a tuple (public_data, private_key) giving the
-    JSON-serializable public-key data and the associated private key as a
-    browserid.jwt.Key object.
-    """
-    key = dsa.generate_private_key(1024, backend=backend)
-    params = key.parameters().parameter_numbers()
-    data = {
-        "algorithm": "DS",
-        "p": to_hex(params.p),
-        "q": to_hex(params.q),
-        "g": to_hex(params.g),
-        "y": to_hex(key.public_key().public_numbers().y),
-        "x": to_hex(key.private_numbers().x),
-    }
-    private_key = browserid.jwt.DS128Key(data)
-    del data["x"]
-    return data, private_key
-
 
 def unwrap_keys(keys, stretchpwd):
     unwrap_key = derive_key(stretchpwd, "unwrapBkey")
