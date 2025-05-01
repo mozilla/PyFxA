@@ -27,7 +27,6 @@ Currently, basic auth-server operations should work like so:
     client.create_account("test@example.com", "MySecretPassword")
 
     session = client.login("test@example.com", "MySecretPassword")
-    cert = session.sign_certificate(myPublicKey)
     session.change_password("MySecretPassword", "ThisIsEvenMoreSecret")
 
 
@@ -90,11 +89,11 @@ testing with live email addresses.  It works like this:
     client.destroy_account(acct.email, "MySecretPassword")
 
 
-Passing tokens and assertions to other applications
+Passing tokens to other applications
 ===================================================
 
 PyFxA provides a ``fxa-client`` that you can use to export Bearer
-Tokens and Browser ID assertions.
+Tokens.
 
 
 Get a Bearer Token for an existing account

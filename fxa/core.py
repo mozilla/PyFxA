@@ -27,10 +27,6 @@ from fxa.crypto import (
 DEFAULT_SERVER_URL = PRODUCTION_URLS['authentication']
 VERSION_SUFFIXES = ("/v1",)
 
-DEFAULT_ASSERTION_DURATION = 60
-DEFAULT_CERT_DURATION = 1000 * 60 * 30  # half an hour, in milliseconds
-
-
 class Client:
     """Client for talking to the Firefox Accounts auth server."""
 
@@ -419,7 +415,7 @@ class Session:
 
     def __init__(self, client, email, stretchpwd, uid, token,
                  key_fetch_token=None, verified=False, verificationMethod=None,
-                 auth_timestamp=0, cert_keypair=None):
+                 auth_timestamp=0):
         self.client = client
         self.email = email
         self.uid = uid
@@ -427,7 +423,6 @@ class Session:
         self.verified = verified
         self.verificationMethod = verificationMethod
         self.auth_timestamp = auth_timestamp
-        self.cert_keypair = None
         self.keys = None
         self._auth = HawkTokenAuth(token, "sessionToken", self.apiclient)
         self._key_fetch_token = key_fetch_token
@@ -528,18 +523,6 @@ class Session:
             self.verified = True
 
         return resp["success"]
-
-    def sign_certificate(self, public_key, duration=DEFAULT_CERT_DURATION,
-                         service=None):
-        body = {
-            "publicKey": public_key,
-            "duration": duration,
-        }
-        url = "/certificate/sign"
-        if service is not None:
-            url += "?service=" + urlquote(service)
-        resp = self.apiclient.post(url, body, auth=self._auth)
-        return resp["cert"]
 
     def change_password(self, oldpwd, newpwd,
                         oldstretchpwd=None, newstretchpwd=None):
