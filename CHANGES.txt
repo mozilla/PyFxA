@@ -3,6 +3,11 @@ CHANGELOG
 
 This document describes changes between each past release.
 
+0.8.1 (2025-05-01)
+==================
+
+- Fixes issue with BrowserID removal
+
 0.8.0 (2025-04-29)
 ==================
 
