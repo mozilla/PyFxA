@@ -401,7 +401,7 @@ class TestAuthClientAuthorizeToken(unittest.TestCase):
         self.assertEqual(authorize_req_body, {
             "client_id": self.client.client_id,
             "state": AnyStringValue(),
-            "code_challenge":AnyStringValue(),
+            "code_challenge": AnyStringValue(),
             "code_challenge_method": AnyStringValue(),
         })
         token_req_body = json.loads(_decoded(responses.calls[1].request.body))
