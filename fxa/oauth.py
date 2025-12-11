@@ -218,7 +218,7 @@ class Client:
                     algorithms=["RS256"],
                 ),
             )
-        except:
+        except Exception:
             # If something goes wrong, fallback to PyJWT
             pubkey = jwt.algorithms.RSAAlgorithm.from_jwk(key)
             decoded = jwt.decode(
