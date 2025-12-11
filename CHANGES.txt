@@ -3,6 +3,11 @@ CHANGELOG
 
 This document describes changes between each past release.
 
+0.8.2 (2025-12-11)
+==================
+
+- Migrate to use jwtoxide
+
 0.8.1 (2025-05-01)
 ==================
 

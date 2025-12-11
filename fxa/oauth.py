@@ -9,6 +9,7 @@ import hashlib
 from urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
 import jwt
+from jwtoxide import DecodingKey, Jwk, ValidationOptions, decode
 from fxa.cache import MemoryCache, DEFAULT_CACHE_EXPIRY
 from fxa.constants import PRODUCTION_URLS
 from fxa.errors import OutOfProtocolError, ScopeMismatchError, TrustError
@@ -204,9 +205,25 @@ class Client:
         # which tokens. So there's no value in checking it here, and in fact if
         # we check it here, it fails because the right audience isn't being
         # requested.
-        decoded = jwt.decode(
-            token, pubkey, algorithms=['RS256'], options={'verify_aud': False}
-        )
+        try:
+            # Try to first decode with jwtoxide
+            decoded = decode(
+                token,
+                DecodingKey.from_jwk(Jwk.from_json(key)),
+                ValidationOptions(
+                    aud=None,
+                    iss=None,
+                    required_spec_claims={"iat", "exp"},
+                    validate_aud=False,
+                    algorithms=["RS256"],
+                ),
+            )
+        except:
+            # If something goes wrong, fallback to PyJWT
+            pubkey = jwt.algorithms.RSAAlgorithm.from_jwk(key)
+            decoded = jwt.decode(
+                token, pubkey, algorithms=["RS256"], options={"verify_aud": False}
+            )
         # Ref https://tools.ietf.org/html/rfc7515#section-4.1.9 the `typ` header
         # is lowercase and has an implicit default `application/` prefix.
         typ = jwt.get_unverified_header(token).get('typ', '')

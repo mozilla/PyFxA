@@ -32,6 +32,7 @@ dynamic = [ "version" ]
 dependencies = [
   "cryptography",
   "hawkauthlib",
+  "jwtoxide",
   "pyjwt",
   "requests>=2.4.2",
 ]
