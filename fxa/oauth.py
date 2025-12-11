@@ -199,7 +199,6 @@ class Client:
         return resp['access_token']
 
     def _verify_jwt_token(self, key, token):
-        pubkey = jwt.algorithms.RSAAlgorithm.from_jwk(key)
         # The FxA OAuth ecosystem currently doesn't make good use of aud, and
         # instead relies on scope for restricting which services can accept
         # which tokens. So there's no value in checking it here, and in fact if
