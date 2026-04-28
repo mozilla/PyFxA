@@ -7,10 +7,12 @@ from urllib.parse import urlparse
 
 import pyotp
 import pytest
+import requests
 from parameterized import parameterized_class
 
 import fxa.errors
 from fxa.core import Client, StretchedPassword
+from fxa._utils import APIClient
 
 from fxa.tests.utils import (
     unittest,
@@ -393,6 +395,28 @@ class TestCoreClientSession(unittest.TestCase):
 
         # And now should not exist
         self.assertFalse(self.session.totp_exists())
+
+
+class TestAPIClientWAFHeader(unittest.TestCase):
+    """Unit tests for CI_WAF_TOKEN header injection in APIClient."""
+
+    SERVER_URL = "https://api.example.com/v1/"
+
+    def test_waf_header_set_when_env_var_present(self):
+        with unittest.mock.patch.dict("os.environ", {"CI_WAF_TOKEN": "sekrit"}):
+            client = APIClient(self.SERVER_URL)
+        self.assertEqual(client.headers.get("fxa-ci"), "sekrit")
+
+    def test_waf_header_absent_when_env_var_not_set(self):
+        with unittest.mock.patch.dict("os.environ", {}, clear=True):
+            client = APIClient(self.SERVER_URL)
+        self.assertNotIn("fxa-ci", client.headers)
+
+    def test_waf_header_not_injected_into_caller_supplied_session(self):
+        supplied = requests.Session()
+        with unittest.mock.patch.dict("os.environ", {"CI_WAF_TOKEN": "sekrit"}):
+            APIClient(self.SERVER_URL, session=supplied)
+        self.assertNotIn("fxa-ci", supplied.headers)
 
 
 # helpers
