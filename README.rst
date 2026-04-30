@@ -92,7 +92,7 @@ testing with live email addresses.  It works like this:
 CI WAF bypass
 =============
 
-When running CI tests against a Mozilla Accounts environment protected by 
+When running CI tests against a Mozilla Accounts environment protected by
 WAF, requests may be subject to challenge rules.
 To bypass them, set the ``CI_WAF_TOKEN`` environment variable::
 

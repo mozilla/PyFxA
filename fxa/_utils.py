@@ -161,10 +161,9 @@ class APIClient:
                 allowed_methods={"DELETE", "GET", "POST", "PUT"},
             )
             session.mount(server_url, HTTPAdapter(max_retries=retries))
-            # Inject CI WAF bypass header
-            waf_token = os.environ.get("CI_WAF_TOKEN")
-            if waf_token:
-                session.headers["fxa-ci"] = waf_token
+        waf_token = os.environ.get("CI_WAF_TOKEN")
+        if waf_token:
+            session.headers["fxa-ci"] = waf_token
         # Properties that can be customized to change behaviour.
         self.server_url = server_url
         self.timeout = 30

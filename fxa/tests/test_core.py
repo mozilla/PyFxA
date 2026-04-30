@@ -1,6 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
+import os
 import time
 
 from urllib.parse import urlparse
@@ -408,15 +409,16 @@ class TestAPIClientWAFHeader(unittest.TestCase):
         self.assertEqual(client.headers.get("fxa-ci"), "sekrit")
 
     def test_waf_header_absent_when_env_var_not_set(self):
-        with unittest.mock.patch.dict("os.environ", {}, clear=True):
+        env = {k: v for k, v in os.environ.items() if k != "CI_WAF_TOKEN"}
+        with unittest.mock.patch.dict("os.environ", env, clear=True):
             client = APIClient(self.SERVER_URL)
         self.assertNotIn("fxa-ci", client.headers)
 
-    def test_waf_header_not_injected_into_caller_supplied_session(self):
+    def test_waf_header_set_on_caller_supplied_session(self):
         supplied = requests.Session()
         with unittest.mock.patch.dict("os.environ", {"CI_WAF_TOKEN": "sekrit"}):
             APIClient(self.SERVER_URL, session=supplied)
-        self.assertNotIn("fxa-ci", supplied.headers)
+        self.assertEqual(supplied.headers.get("fxa-ci"), "sekrit")
 
 
 # helpers
