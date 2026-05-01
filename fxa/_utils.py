@@ -147,6 +147,7 @@ class APIClient:
         * backoff protocol support
         * sensible request timeouts
         * timestamp skew tracking with automatic retry on clockskew error
+        * CI WAF bypass header injection
 
     """
 
@@ -160,6 +161,9 @@ class APIClient:
                 allowed_methods={"DELETE", "GET", "POST", "PUT"},
             )
             session.mount(server_url, HTTPAdapter(max_retries=retries))
+        waf_token = os.environ.get("CI_WAF_TOKEN")
+        if waf_token:
+            session.headers["fxa-ci"] = waf_token
         # Properties that can be customized to change behaviour.
         self.server_url = server_url
         self.timeout = 30
