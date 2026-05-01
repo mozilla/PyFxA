@@ -38,6 +38,8 @@ class TestCoreClient(unittest.TestCase):
     server_url = TEST_SERVER_URL
 
     def setUp(self):
+        if not os.environ.get("FXA_RUN_LIVE_TESTS"):
+            self.skipTest("Set FXA_RUN_LIVE_TESTS=1 to run live tests against the stage server")
         self.client_v1 = Client(self.server_url)
         self.client_v2 = Client(self.server_url, key_stretch_version=2)
         if self.key_stretch_version == 2:
@@ -285,7 +287,8 @@ class TestCoreClientSession(unittest.TestCase):
     server_url = TEST_SERVER_URL
 
     def setUp(self):
-
+        if not os.environ.get("FXA_RUN_LIVE_TESTS"):
+            self.skipTest("Set FXA_RUN_LIVE_TESTS=1 to run live tests against the stage server")
         self.client_v2 = Client(self.server_url, key_stretch_version=2)
         self.client_v1 = Client(self.server_url, key_stretch_version=1)
         if self.key_stretch_version == 2:
