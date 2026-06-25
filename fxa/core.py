@@ -9,7 +9,7 @@ from urllib.parse import quote as urlquote
 from fxa.errors import ClientError
 from fxa._utils import (
     APIClient,
-    HawkTokenAuth,
+    FxATokenBearerAuth,
     exactly_one_of,
     hexstr
 )
@@ -224,7 +224,7 @@ class Client:
 
     def fetch_keys(self, key_fetch_token, stretchpwd):
         url = "/account/keys"
-        auth = HawkTokenAuth(key_fetch_token, "keyFetchToken", self.apiclient)
+        auth = FxATokenBearerAuth(key_fetch_token, "keyFetchToken", self.apiclient)
         resp = self.apiclient.get(url, auth=auth)
         bundle = unhexlify(resp["bundle"])
         keys = auth.unbundle("account/keys", bundle)
@@ -273,7 +273,7 @@ class Client:
             "authPW": hexstr(derive_auth_pw(stretchpwd)),
             "wrapKb": hexstr(wrapkb),
         }
-        auth = HawkTokenAuth(token, "passwordChangeToken", self.apiclient)
+        auth = FxATokenBearerAuth(token, "passwordChangeToken", self.apiclient)
         self.apiclient.post("/password/change/finish", body, auth=auth)
 
     def finish_password_change_v2(self, token, spwd, kb):
@@ -284,7 +284,7 @@ class Client:
             "wrapKbVersion2": spwd.get_wrapkb_v2(kb),
             "clientSalt": spwd.v2_salt,
         }
-        auth = HawkTokenAuth(token, "passwordChangeToken", self.apiclient)
+        auth = FxATokenBearerAuth(token, "passwordChangeToken", self.apiclient)
 
         return self.apiclient.post("/password/change/finish", body, auth=auth)
 
@@ -317,7 +317,7 @@ class Client:
             }
 
         url = "/account/reset"
-        auth = HawkTokenAuth(token, "accountResetToken", self.apiclient)
+        auth = FxATokenBearerAuth(token, "accountResetToken", self.apiclient)
         self.apiclient.post(url, body, auth=auth)
 
     def send_reset_code(self, email, **kwds):
@@ -351,7 +351,7 @@ class Client:
                 msg = f"Unexpected keyword argument: {extra}"
                 raise TypeError(msg)
         url = "/password/forgot/resend_code"
-        auth = HawkTokenAuth(token, "passwordForgotToken", self.apiclient)
+        auth = FxATokenBearerAuth(token, "passwordForgotToken", self.apiclient)
         return self.apiclient.post(url, body, auth=auth)
 
     def verify_reset_code(self, token, code):
@@ -359,12 +359,12 @@ class Client:
             "code": code,
         }
         url = "/password/forgot/verify_code"
-        auth = HawkTokenAuth(token, "passwordForgotToken", self.apiclient)
+        auth = FxATokenBearerAuth(token, "passwordForgotToken", self.apiclient)
         return self.apiclient.post(url, body, auth=auth)
 
     def get_reset_code_status(self, token):
         url = "/password/forgot/status"
-        auth = HawkTokenAuth(token, "passwordForgotToken", self.apiclient)
+        auth = FxATokenBearerAuth(token, "passwordForgotToken", self.apiclient)
         return self.apiclient.get(url, auth=auth)
 
     def verify_email_code(self, uid, code):
@@ -424,7 +424,7 @@ class Session:
         self.verificationMethod = verificationMethod
         self.auth_timestamp = auth_timestamp
         self.keys = None
-        self._auth = HawkTokenAuth(token, "sessionToken", self.apiclient)
+        self._auth = FxATokenBearerAuth(token, "sessionToken", self.apiclient)
         self._key_fetch_token = key_fetch_token
 
         # Quick validation on stretchpwd

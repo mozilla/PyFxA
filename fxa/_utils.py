@@ -13,19 +13,18 @@ import os
 import time
 import hashlib
 import hmac
+import warnings
 from binascii import hexlify, unhexlify
-from base64 import b64encode
 try:
     import cPickle as pickle
 except ImportError:  # pragma: no cover
     import pickle
 
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 import requests.auth
 import requests.utils
-import hawkauthlib
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
@@ -42,6 +41,21 @@ USER_AGENT_HEADER = ' '.join((
     'PyFxA/%s' % (fxa.__version__),
     requests.utils.default_user_agent(),
 ))
+
+
+# Typed Bearer-token prefix per FxA token kind. Must stay in sync with the
+# auth-server table in `lib/routes/auth-schemes/bearer-fxa-token.js` and the
+# auth-client `lib/bearer.ts`. The prefix keeps these tokens disjoint from the
+# OAuth refresh-token scheme (plain `Bearer <hex>`) and from legacy Hawk on
+# routes that accept more than one. See ADR-0022 / ADR-0050 and
+# https://mozilla.github.io/ecosystem-platform/reference/authentication-schemes
+TOKEN_PREFIXES = {
+    "sessionToken": "fxs",
+    "keyFetchToken": "fxk",
+    "accountResetToken": "fxar",
+    "passwordForgotToken": "fxpf",
+    "passwordChangeToken": "fxpc",
+}
 
 
 def hexstr(data):
@@ -146,7 +160,6 @@ class APIClient:
         * default base server URL
         * backoff protocol support
         * sensible request timeouts
-        * timestamp skew tracking with automatic retry on clockskew error
         * CI WAF bypass header injection
 
     """
@@ -172,7 +185,6 @@ class APIClient:
         self._session = session
         self._backoff_until = 0
         self._backoff_response = None
-        self._clockskew = None
 
     # Reflect useful properties of the wrapped Session object.
 
@@ -216,30 +228,19 @@ class APIClient:
         """Get the current timestamp, as seen by the client.
 
         This is a helper function that returns the current local time.
-        It's mostly here for symmetry with server_curtime() and to assist
-        in testability of this class.
+        It's mostly here to assist in testability of this class.
         """
         return time.time()
 
-    def server_curtime(self):
-        """Get the current timestamp, as seen by the server.
-
-        This is a helper function that automatically applies any detected
-        clock-skew, to report what the current timestamp is on the server
-        instead of on the client.
-        """
-        return self.client_curtime() + (self._clockskew or 0)
-
     # The actual request-making stuff.
 
-    def request(self, method, url, json=None, retry_auth_errors=True, **kwds):
+    def request(self, method, url, json=None, **kwds):
         """Make a request to the API and process the response.
 
         This method implements the low-level details of interacting with an
         FxA Web API, stripping away most of the details of HTTP.  It will
         return the parsed JSON of a successful responses, or raise an exception
-        for an error response.  It's also responsible for backoff handling
-        and clock-skew tracking.
+        for an error response.  It's also responsible for backoff handling.
         """
         # Don't make requests if we're in backoff.
         # Instead just synthesize a backoff response.
@@ -247,7 +248,6 @@ class APIClient:
             if self._backoff_until >= self.client_curtime():
                 resp = pickle.loads(self._backoff_response)
                 resp.request = None
-                resp.headers["Timestamp"] = str(int(self.server_curtime()))
                 return resp
             else:
                 self._backoff_until = 0
@@ -294,37 +294,6 @@ class APIClient:
                 self._backoff_until = self.client_curtime() + retry_after
                 self._backoff_response = pickle.dumps(resp)
 
-        # If we get a 401 with "serverTime" field in the body, then we're
-        # probably out of sync with the server's clock.  Check our skew,
-        # adjust if necessary and try again.
-        if retry_auth_errors:
-            if resp.status_code == 401 and "serverTime" in body:
-                try:
-                    server_timestamp = int(body["serverTime"])
-                except ValueError:
-                    msg = "API responded with non-integer serverTime: {0}"
-                    msg = msg.format(body["serverTime"])
-                    raise fxa.errors.OutOfProtocolError(msg)
-                # If our guestimate is more than 30 seconds out, try again.
-                # This assumes the auth hook will use the updated clockskew.
-                if abs(server_timestamp - self.server_curtime()) > 30:
-                    self._clockskew = server_timestamp - self.client_curtime()
-                    return self.request(method, url, json, False, **kwds)
-
-        # See if we need to adjust for clock skew between client and server.
-        # We do this automatically once per session in the hopes of avoiding
-        # having to retry subsequent auth failures.  We do it *after* the retry
-        # checking above, because it wrecks the "were we out of sync?" check.
-        if self._clockskew is None and "timestamp" in resp.headers:
-            try:
-                server_timestamp = int(resp.headers["timestamp"])
-            except ValueError:
-                msg = "API responded with non-integer timestamp: {0}"
-                msg = msg.format(resp.headers["timestamp"])
-                raise fxa.errors.OutOfProtocolError(msg)
-            else:
-                self._clockskew = server_timestamp - self.client_curtime()
-
         # Raise exceptions for any error responses.
         # XXX TODO: hooks for raising error subclass based on errno.
         if 400 <= resp.status_code < 500:
@@ -351,40 +320,57 @@ class APIClient:
         return self.request("DELETE", url, **kwds)
 
 
-class HawkTokenAuth(requests.auth.AuthBase):
-    """A requests auth hook implementing token-based hawk auth.
+_LOOPBACK_HOSTS = frozenset(("localhost", "127.0.0.1", "0.0.0.0", "::1"))
 
-    This auth hook implements the hkdf-derived-hawk-token auth scheme
-    as used by the Firefox Accounts auth server.  It uses HKDF to derive
-    an id and secret key from a random 32-byte token, then signs the request
-    with those credentials using the Hawk request-signing scheme.
+
+def _reject_insecure_token_transport(url):
+    """Refuse to send a bearer credential over plaintext HTTP.
+
+    Unlike the old Hawk signature, the Bearer header is a replayable
+    credential, so its confidentiality depends entirely on TLS. Loopback hosts
+    are exempt so local development against an http auth-server still works.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme == "http" and parsed.hostname not in _LOOPBACK_HOSTS:
+        raise fxa.errors.TrustError(
+            "Refusing to send an FxA token over a non-HTTPS connection to "
+            f"{parsed.hostname}: the Bearer header is a replayable credential "
+            "and must only be sent over https."
+        )
+
+
+class FxATokenBearerAuth(requests.auth.AuthBase):
+    """A requests auth hook for FxA tokens delivered as prefixed Bearer tokens.
+
+    This auth hook implements the prefixed-Bearer scheme that replaced Hawk on
+    the Firefox Accounts auth server (ADR-0022).  It uses HKDF to derive an id
+    and bundle key from a random 32-byte token, then sends the id in the
+    Authorization header as ``Bearer <prefix>_<id>``, where ``<prefix>``
+    identifies the token kind (see ``TOKEN_PREFIXES``).
+
+    The HKDF derivation is scheme-neutral: the same id is what the legacy Hawk
+    strategy looked up server-side, and the bundle key is still used to
+    unbundle encrypted ``account/keys`` responses.
     """
 
     def __init__(self, token, tokentype, apiclient=None):
+        try:
+            self.prefix = TOKEN_PREFIXES[tokentype]
+        except KeyError:
+            raise ValueError(f"unknown token kind: {tokentype!r}") from None
         tokendata = unhexlify(token)
+        # 96 bytes keeps id ([:32]) and bundle_key ([64:]) at server offsets;
+        # the middle 32 (old Hawk auth key) are unused.
         key_material = fxa.crypto.derive_key(tokendata, tokentype, 3*32)
         self.id = hexstr(key_material[:32])
-        self.auth_key = key_material[32:64]
         self.bundle_key = key_material[64:]
+        # Unused by the Bearer scheme (Hawk read it for the request timestamp);
+        # retained for signature back-compat with callers and the auth setter.
         self.apiclient = apiclient
 
     def __call__(self, req):
-        # Requests doesn't include the port in the Host header by default.
-        # Ensure a fully-correct value so that signatures work properly.
-        req.headers["Host"] = urlparse(req.url).netloc
-        params = {}
-        if req.body:
-            body = _encoded(req.body, 'utf-8')
-            hasher = hashlib.sha256()
-            hasher.update(b"hawk.1.payload\napplication/json\n")
-            hasher.update(body)
-            hasher.update(b"\n")
-            hash = b64encode(hasher.digest())
-            hash = hash.decode("ascii")
-            params["hash"] = hash
-        if self.apiclient is not None:
-            params["ts"] = str(int(self.apiclient.server_curtime()))
-        hawkauthlib.sign_request(req, self.id, self.auth_key, params=params)
+        _reject_insecure_token_transport(req.url)
+        req.headers["Authorization"] = f"Bearer {self.prefix}_{self.id}"
         return req
 
     def bundle(self, namespace, payload):
@@ -394,6 +380,24 @@ class HawkTokenAuth(requests.auth.AuthBase):
     def unbundle(self, namespace, payload):
         """Unbundle encrypted response data."""
         return fxa.crypto.unbundle(self.bundle_key, namespace, payload)
+
+
+class HawkTokenAuth(FxATokenBearerAuth):
+    """Deprecated alias for :class:`FxATokenBearerAuth`.
+
+    Hawk signing was removed in the Bearer migration (ADR-0022); this name now
+    emits a prefixed Bearer header. Kept so existing imports keep working, but
+    it warns so callers know to switch to ``FxATokenBearerAuth``.
+    """
+
+    def __init__(self, *args, **kwds):
+        warnings.warn(
+            "HawkTokenAuth is deprecated and no longer uses Hawk; "
+            "use FxATokenBearerAuth instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwds)
 
 
 class BearerTokenAuth(requests.auth.AuthBase):
@@ -415,12 +419,6 @@ def _decoded(value, encoding='utf-8'):
     """Make sure the value is of type ``unicode`` in both PY2 and PY3."""
     if not isinstance(value, str):
         value = value.decode(encoding)
-    return value
-
-
-def _encoded(value, encoding='utf-8'):
-    if not isinstance(value, bytes):
-        return value.encode(encoding)
     return value
 
 

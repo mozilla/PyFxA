@@ -9,10 +9,11 @@ from urllib.parse import urlparse
 import pyotp
 import pytest
 import requests
+import responses
 from parameterized import parameterized_class
 
 import fxa.errors
-from fxa.core import Client, StretchedPassword
+from fxa.core import Client, Session, StretchedPassword
 from fxa._utils import APIClient
 
 from fxa.tests.utils import (
@@ -422,6 +423,38 @@ class TestAPIClientWAFHeader(unittest.TestCase):
         with unittest.mock.patch.dict("os.environ", {"CI_WAF_TOKEN": "sekrit"}):
             APIClient(self.SERVER_URL, session=supplied)
         self.assertEqual(supplied.headers.get("fxa-ci"), "sekrit")
+
+
+class TestCoreBearerAuthHeaders(unittest.TestCase):
+    """Mocked coverage that the migrated call sites send a prefixed Bearer
+    header with the right per-kind prefix (live tests are gated behind
+    FXA_RUN_LIVE_TESTS, so this is what guards the wire format in CI).
+    """
+
+    server_url = "https://server/v1"
+
+    def setUp(self):
+        self.client = Client(self.server_url)
+
+    @responses.activate
+    def test_session_token_call_site_sends_fxs_bearer(self):
+        responses.add(responses.GET, self.server_url + "/session/status",
+                      json={"uid": "abc123"}, content_type="application/json")
+        session = Session(
+            client=self.client, email="test@example.com",
+            stretchpwd=b"\x00" * 32, uid="abc123", token="1234",
+        )
+        session.check_session_status()
+        authz = responses.calls[0].request.headers["Authorization"]
+        self.assertRegex(authz, r"^Bearer fxs_[0-9a-f]{64}$")
+
+    @responses.activate
+    def test_password_forgot_token_call_site_sends_fxpf_bearer(self):
+        responses.add(responses.GET, self.server_url + "/password/forgot/status",
+                      json={}, content_type="application/json")
+        self.client.get_reset_code_status("1234")
+        authz = responses.calls[0].request.headers["Authorization"]
+        self.assertRegex(authz, r"^Bearer fxpf_[0-9a-f]{64}$")
 
 
 # helpers

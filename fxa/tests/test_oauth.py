@@ -306,6 +306,9 @@ class TestAuthClientAuthorizeCode(unittest.TestCase):
             "client_id": self.client.client_id,
             "state": AnyStringValue(),
         })
+        # The sessionToken is sent as a prefixed Bearer token, not Hawk-signed.
+        authz = responses.calls[0].request.headers["Authorization"]
+        self.assertRegex(authz, r"^Bearer fxs_[0-9a-f]{64}$")
 
     @responses.activate
     def test_authorize_code_with_explicit_scope(self):
