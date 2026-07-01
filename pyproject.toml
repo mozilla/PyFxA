@@ -31,7 +31,6 @@ classifiers = [
 dynamic = [ "version" ]
 dependencies = [
   "cryptography",
-  "hawkauthlib",
   "pyjwt",
   "requests>=2.4.2",
 ]

@@ -12,7 +12,7 @@ import jwt
 from fxa.cache import MemoryCache, DEFAULT_CACHE_EXPIRY
 from fxa.constants import PRODUCTION_URLS
 from fxa.errors import OutOfProtocolError, ScopeMismatchError, TrustError
-from fxa._utils import APIClient, scope_matches, get_hmac, HawkTokenAuth
+from fxa._utils import APIClient, scope_matches, get_hmac, FxATokenBearerAuth
 
 DEFAULT_SERVER_URL = PRODUCTION_URLS['oauth']
 VERSION_SUFFIXES = ("/v1",)
@@ -135,7 +135,7 @@ class Client:
         :param code_challenge: optional PKCE code challenge.
         :param code_challenge_method: optional PKCE code challenge method.
         """
-        auth = HawkTokenAuth(session.token, "sessionToken", self.apiclient)
+        auth = FxATokenBearerAuth(session.token, "sessionToken", self.apiclient)
 
         if client_id is None:
             client_id = self.client_id
