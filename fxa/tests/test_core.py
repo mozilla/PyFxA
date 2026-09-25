@@ -1,6 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
+import json
 import os
 import time
 
@@ -13,7 +14,7 @@ import responses
 from parameterized import parameterized_class
 
 import fxa.errors
-from fxa.core import Client, Session, StretchedPassword
+from fxa.core import Client, PasswordForgotToken, Session, StretchedPassword
 from fxa._utils import APIClient
 
 from fxa.tests.utils import (
@@ -147,31 +148,30 @@ class TestCoreClient(unittest.TestCase):
         )
         self.add_account_to_delete(acct, session)
 
-        # Initiate the password reset flow, and grab the verification code.
+        # Initiate the password reset flow, and grab the one-time code.
         pftok = self.client.send_reset_code(acct.email, service="foobar")
-        m = acct.wait_for_email(lambda m: "x-recovery-code" in m["headers"])
+        m = acct.wait_for_email(lambda m: "x-password-forgot-otp" in m["headers"])
         if not m:
             raise RuntimeError("Password reset email was not received")
         acct.clear()
-        code = m["headers"]["x-recovery-code"]
+        code = m["headers"]["x-password-forgot-otp"]
 
         # Try with an invalid code to test error handling.
-        tries = pftok.tries_remaining
-        self.assertTrue(tries > 1)
-        with self.assertRaises(Exception):
+        with self.assertRaises(fxa.errors.ClientError):
             pftok.verify_code(mutate_one_byte(code))
-        pftok.get_status()
-        self.assertEqual(pftok.tries_remaining, tries - 1)
+        self.assertIsNone(pftok.token)
 
         # Re-send the code, as if we've lost the email.
         pftok.resend_code()
-        m = acct.wait_for_email(lambda m: "x-recovery-code" in m["headers"])
+        m = acct.wait_for_email(lambda m: "x-password-forgot-otp" in m["headers"])
         if not m:
             raise RuntimeError("Password reset email was not received")
-        self.assertEqual(m["headers"]["x-recovery-code"], code)
+        code = m["headers"]["x-password-forgot-otp"]
 
         # Now verify with the actual code, and reset the account.
         artok = pftok.verify_code(code)
+        self.assertIsNotNone(pftok.token)
+        self.assertEqual(pftok.uid, session.uid)
         self.client.reset_account(
             email=acct.email,
             token=artok,
@@ -450,11 +450,89 @@ class TestCoreBearerAuthHeaders(unittest.TestCase):
 
     @responses.activate
     def test_password_forgot_token_call_site_sends_fxpf_bearer(self):
-        responses.add(responses.GET, self.server_url + "/password/forgot/status",
-                      json={}, content_type="application/json")
-        self.client.get_reset_code_status("1234")
+        responses.add(responses.POST, self.server_url + "/password/forgot/verify_code",
+                      json={"accountResetToken": "ab" * 32},
+                      content_type="application/json")
+        self.client.verify_reset_code("1234", "deadbeef")
         authz = responses.calls[0].request.headers["Authorization"]
         self.assertRegex(authz, r"^Bearer fxpf_[0-9a-f]{64}$")
+
+
+class TestCorePasswordReset(unittest.TestCase):
+    """Mocked coverage of the OTP password-reset flow and its request shapes."""
+
+    server_url = "https://server/v1"
+
+    def setUp(self):
+        self.client = Client(self.server_url)
+
+    @responses.activate
+    def test_send_reset_code_posts_otp_request(self):
+        responses.add(responses.POST, self.server_url + "/password/forgot/send_otp",
+                      json={}, content_type="application/json")
+        pftok = self.client.send_reset_code("test@example.com", service="sync")
+        body = json.loads(responses.calls[0].request.body)
+        self.assertEqual(body, {"email": "test@example.com", "service": "sync"})
+        self.assertNotIn("Authorization", responses.calls[0].request.headers)
+        self.assertEqual(pftok.email, "test@example.com")
+        self.assertEqual(pftok.service, "sync")
+        self.assertIsNone(pftok.token)
+
+    @responses.activate
+    def test_send_reset_code_omits_service_when_unset(self):
+        responses.add(responses.POST, self.server_url + "/password/forgot/send_otp",
+                      json={}, content_type="application/json")
+        self.client.send_reset_code("test@example.com")
+        body = json.loads(responses.calls[0].request.body)
+        self.assertEqual(body, {"email": "test@example.com"})
+
+    @responses.activate
+    def test_verify_code_chains_otp_and_code_verification(self):
+        responses.add(responses.POST, self.server_url + "/password/forgot/verify_otp",
+                      json={
+                          "code": "c0de" * 8,
+                          "token": "12" * 32,
+                          "uid": "abc123",
+                          "emailToHashWith": "primary@example.com",
+                      }, content_type="application/json")
+        responses.add(responses.POST, self.server_url + "/password/forgot/verify_code",
+                      json={"accountResetToken": "ab" * 32},
+                      content_type="application/json")
+        pftok = PasswordForgotToken(self.client, "test@example.com")
+
+        artok = pftok.verify_code("12345678")
+
+        self.assertEqual(artok, "ab" * 32)
+        otp_req, code_req = responses.calls[0].request, responses.calls[1].request
+        self.assertEqual(json.loads(otp_req.body),
+                         {"email": "test@example.com", "code": "12345678"})
+        self.assertNotIn("Authorization", otp_req.headers)
+        self.assertEqual(json.loads(code_req.body), {"code": "c0de" * 8})
+        self.assertRegex(code_req.headers["Authorization"], r"^Bearer fxpf_[0-9a-f]{64}$")
+        self.assertEqual(pftok.token, "12" * 32)
+        self.assertEqual(pftok.uid, "abc123")
+        self.assertEqual(pftok.email_to_hash_with, "primary@example.com")
+
+    @responses.activate
+    def test_invalid_otp_leaves_token_unset(self):
+        responses.add(responses.POST, self.server_url + "/password/forgot/verify_otp",
+                      json={"code": 400, "errno": 105, "error": "Bad Request",
+                            "message": "Invalid verification code"},
+                      status=400, content_type="application/json")
+        pftok = PasswordForgotToken(self.client, "test@example.com")
+        with self.assertRaises(fxa.errors.ClientError):
+            pftok.verify_code("00000000")
+        self.assertIsNone(pftok.token)
+        self.assertEqual(len(responses.calls), 1)
+
+    @responses.activate
+    def test_resend_code_posts_otp_request_again(self):
+        responses.add(responses.POST, self.server_url + "/password/forgot/send_otp",
+                      json={}, content_type="application/json")
+        pftok = PasswordForgotToken(self.client, "test@example.com", service="sync")
+        pftok.resend_code()
+        body = json.loads(responses.calls[0].request.body)
+        self.assertEqual(body, {"email": "test@example.com", "service": "sync"})
 
 
 # helpers
