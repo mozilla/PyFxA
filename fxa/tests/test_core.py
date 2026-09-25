@@ -372,31 +372,37 @@ class TestCoreClientSession(unittest.TestCase):
         self.assertEqual(self.session.keys[1], keys[1])
 
     def test_totp(self):
-        resp = self.session.totp_create()
+        # TOTP setup is guarded by a short-lived MFA token, obtained by
+        # verifying a code the server emails to the account.
+        self.session.mfa_request_otp("2fa")
+        m = self.acct.wait_for_email(
+            lambda m: "x-account-change-verify-code" in m["headers"])
+        if not m:
+            raise RuntimeError("MFA code email was not received")
+        self.acct.clear()
+        mfa_token = self.session.mfa_verify_otp(
+            m["headers"]["x-account-change-verify-code"], "2fa")
 
-        # Should exist even if not verified
-        self.assertTrue(self.session.totp_exists())
+        resp = self.session.totp_create(mfa_token)
 
-        # Creating again should work unless verified
-        resp = self.session.totp_create()
+        # Nothing is stored on the account until setup completes.
+        self.assertFalse(self.session.totp_exists())
 
-        # Set session unverified to test next call
-        self.session.verified = False
+        # Creating again re-issues the same pending secret.
+        resp2 = self.session.totp_create(mfa_token)
+        self.assertEqual(resp2["secret"], resp["secret"])
 
-        # Verify the code
         code = pyotp.TOTP(resp["secret"]).now()
-        self.assertTrue(self.session.totp_verify(code))
-        self.assertTrue(self.session.verified)
-
-        # Should exist
+        self.assertTrue(self.session.totp_setup_verify(mfa_token, code))
+        self.assertTrue(self.session.totp_setup_complete(mfa_token))
         self.assertTrue(self.session.totp_exists())
 
-        # Double create causes a client error
+        # Creating again once TOTP is enabled is a client error.
         with self.assertRaises(fxa.errors.ClientError):
-            self.session.totp_create()
+            self.session.totp_create(mfa_token)
 
         # Remove the code
-        resp = self.session.totp_delete()
+        self.session.totp_delete(mfa_token)
 
         # And now should not exist
         self.assertFalse(self.session.totp_exists())
@@ -455,6 +461,19 @@ class TestCoreBearerAuthHeaders(unittest.TestCase):
         self.client.get_reset_code_status("1234")
         authz = responses.calls[0].request.headers["Authorization"]
         self.assertRegex(authz, r"^Bearer fxpf_[0-9a-f]{64}$")
+
+    @responses.activate
+    def test_totp_setup_sends_plain_bearer_mfa_token(self):
+        responses.add(responses.POST, self.server_url + "/mfa/totp/create",
+                      json={"secret": "s", "qrCodeUrl": "data:"},
+                      content_type="application/json")
+        session = Session(
+            client=self.client, email="test@example.com",
+            stretchpwd=b"\x00" * 32, uid="abc123", token="1234",
+        )
+        session.totp_create("eyJ.mfa.jwt")
+        authz = responses.calls[0].request.headers["Authorization"]
+        self.assertEqual(authz, "Bearer eyJ.mfa.jwt")
 
 
 # helpers
