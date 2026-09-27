@@ -3,6 +3,18 @@ CHANGELOG
 
 This document describes changes between each past release.
 
+0.9.0 (unreleased)
+==================
+
+- Move password reset to the ``/password/forgot/send_otp`` and
+  ``/password/forgot/verify_otp`` routes. The ``send_code``, ``resend_code``
+  and ``status`` routes were removed server-side in January 2026 and had been
+  returning 404. ``Client.send_reset_code`` now takes only ``service`` and
+  returns a ``PasswordForgotToken`` whose ``token`` and ``uid`` are set by
+  ``verify_code``. ``PasswordForgotToken.get_status``,
+  ``Client.resend_reset_code`` and ``Client.get_reset_code_status`` are
+  removed; ``Client.verify_reset_otp`` is new.
+
 0.8.2 (2026-05-14)
 ==================
 

@@ -320,39 +320,35 @@ class Client:
         auth = FxATokenBearerAuth(token, "accountResetToken", self.apiclient)
         self.apiclient.post(url, body, auth=auth)
 
-    def send_reset_code(self, email, **kwds):
-        body = {
-            "email": email,
-        }
-        for extra in kwds:
-            if extra in ("service", "redirectTo", "resume"):
-                body[extra] = kwds[extra]
-            else:
-                msg = f"Unexpected keyword argument: {extra}"
-                raise TypeError(msg)
-        url = "/password/forgot/send_code"
-        resp = self.apiclient.post(url, body)
-        return PasswordForgotToken(
-            self, email,
-            resp["passwordForgotToken"],
-            resp["ttl"],
-            resp["codeLength"],
-            resp["tries"],
-        )
+    def send_reset_code(self, email, service=None):
+        """Email a one-time code that starts a password reset for ``email``.
 
-    def resend_reset_code(self, email, token, **kwds):
+        The server issues no token until the code is verified, so the
+        returned :class:`PasswordForgotToken` is only usable through
+        :meth:`PasswordForgotToken.verify_code`.
+        """
         body = {
             "email": email,
         }
-        for extra in kwds:
-            if extra in ("service", "redirectTo", "resume"):
-                body[extra] = kwds[extra]
-            else:
-                msg = f"Unexpected keyword argument: {extra}"
-                raise TypeError(msg)
-        url = "/password/forgot/resend_code"
-        auth = FxATokenBearerAuth(token, "passwordForgotToken", self.apiclient)
-        return self.apiclient.post(url, body, auth=auth)
+        if service is not None:
+            body["service"] = service
+        url = "/password/forgot/send_otp"
+        self.apiclient.post(url, body)
+        return PasswordForgotToken(self, email, service=service)
+
+    def verify_reset_otp(self, email, code):
+        """Exchange the emailed one-time code for a ``passwordForgotToken``.
+
+        Returns the raw response: ``token`` (the passwordForgotToken), the
+        server-issued ``code`` that :meth:`verify_reset_code` expects,
+        ``uid`` and ``emailToHashWith``.
+        """
+        body = {
+            "email": email,
+            "code": code,
+        }
+        url = "/password/forgot/verify_otp"
+        return self.apiclient.post(url, body)
 
     def verify_reset_code(self, token, code):
         body = {
@@ -361,11 +357,6 @@ class Client:
         url = "/password/forgot/verify_code"
         auth = FxATokenBearerAuth(token, "passwordForgotToken", self.apiclient)
         return self.apiclient.post(url, body, auth=auth)
-
-    def get_reset_code_status(self, token):
-        url = "/password/forgot/status"
-        auth = FxATokenBearerAuth(token, "passwordForgotToken", self.apiclient)
-        return self.apiclient.get(url, auth=auth)
 
     def verify_email_code(self, uid, code):
         body = {
@@ -541,31 +532,33 @@ class Session:
 
 
 class PasswordForgotToken:
+    """A password reset in progress, started by :meth:`Client.send_reset_code`.
 
-    def __init__(self, client, email, token, ttl=0, code_length=16,
-                 tries_remaining=1):
+    The auth server emails an 8-digit one-time code. Pass it to
+    :meth:`verify_code` to obtain the ``accountResetToken`` that
+    :meth:`Client.reset_account` needs. ``token``, ``uid`` and
+    ``email_to_hash_with`` are populated once the code has been verified.
+    """
+
+    def __init__(self, client, email, service=None):
         self.client = client
         self.email = email
-        self.token = token
-        self.ttl = ttl
-        self.code_length = code_length
-        self.tries_remaining = tries_remaining
+        self.service = service
+        self.token = None
+        self.uid = None
+        self.email_to_hash_with = None
 
     def verify_code(self, code):
-        resp = self.client.verify_reset_code(self.token, code)
+        otp = self.client.verify_reset_otp(self.email, code)
+        self.token = otp["token"]
+        self.uid = otp["uid"]
+        self.email_to_hash_with = otp["emailToHashWith"]
+        resp = self.client.verify_reset_code(self.token, otp["code"])
         return resp["accountResetToken"]
 
-    def resend_code(self, **kwds):
-        resp = self.client.resend_reset_code(self.email, self.token, **kwds)
-        self.ttl = resp["ttl"]
-        self.code_length = resp["codeLength"]
-        self.tries_remaining = resp["tries"]
-
-    def get_status(self):
-        resp = self.client.get_reset_code_status(self.token)
-        self.ttl = resp["ttl"]
-        self.tries_remaining = resp["tries"]
-        return resp
+    def resend_code(self):
+        """Email a fresh one-time code."""
+        self.client.send_reset_code(self.email, service=self.service)
 
 
 class StretchedPassword:
