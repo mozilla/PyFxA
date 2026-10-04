@@ -9,6 +9,7 @@ from urllib.parse import quote as urlquote
 from fxa.errors import ClientError
 from fxa._utils import (
     APIClient,
+    BearerTokenAuth,
     FxATokenBearerAuth,
     exactly_one_of,
     hexstr
@@ -500,18 +501,64 @@ class Session:
         url = "/recovery_email/resend_code"
         self.apiclient.post(url, body, auth=self._auth)
 
-    def totp_create(self):
-        url = "/totp/create"
-        return self.apiclient.post(url, {}, auth=self._auth)
+    def mfa_request_otp(self, action):
+        """Ask the server to email a one-time code for a sensitive ``action``.
+
+        The code arrives in the ``X-Account-Change-Verify-Code`` header of the
+        email and is exchanged for a short-lived MFA token with
+        :meth:`mfa_verify_otp`. Requires a verified session.
+        """
+        url = "/mfa/otp/request"
+        return self.apiclient.post(url, {"action": action}, auth=self._auth)
+
+    def mfa_verify_otp(self, code, action):
+        """Exchange an emailed one-time code for an MFA token.
+
+        The returned token is a JWT scoped to ``action`` and is what the
+        ``/mfa/*`` routes accept in place of the session token.
+        """
+        url = "/mfa/otp/verify"
+        body = {
+            "code": code,
+            "action": action,
+        }
+        resp = self.apiclient.post(url, body, auth=self._auth)
+        return resp["accessToken"]
+
+    def totp_create(self, mfa_token):
+        """Start TOTP setup and return the shared secret and QR code URL.
+
+        ``mfa_token`` comes from :meth:`mfa_verify_otp` with the ``"2fa"``
+        action. Nothing is stored on the account until
+        :meth:`totp_setup_complete` succeeds.
+        """
+        url = "/mfa/totp/create"
+        return self.apiclient.post(url, {}, auth=BearerTokenAuth(mfa_token))
+
+    def totp_setup_verify(self, mfa_token, code):
+        """Prove possession of the pending TOTP secret with a current code."""
+        url = "/mfa/totp/setup/verify"
+        body = {
+            "code": code,
+        }
+        resp = self.apiclient.post(url, body, auth=BearerTokenAuth(mfa_token))
+        return resp["success"]
+
+    def totp_setup_complete(self, mfa_token):
+        """Enable TOTP on the account once :meth:`totp_setup_verify` passed."""
+        url = "/mfa/totp/setup/complete"
+        resp = self.apiclient.post(url, {}, auth=BearerTokenAuth(mfa_token))
+        return resp["success"]
 
     def totp_exists(self):
         url = "/totp/exists"
         resp = self.apiclient.get(url, auth=self._auth)
         return resp["exists"]
 
-    def totp_delete(self):
-        url = "/totp/destroy"
-        return self.apiclient.post(url, {}, auth=self._auth)
+    def totp_delete(self, mfa_token):
+        """Remove TOTP from the account. ``mfa_token`` needs the ``"2fa"`` action."""
+        url = "/mfa/totp/destroy"
+        return self.apiclient.post(url, {}, auth=BearerTokenAuth(mfa_token))
 
     def totp_verify(self, code):
         url = "/session/verify/totp"

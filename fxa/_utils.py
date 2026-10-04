@@ -411,6 +411,7 @@ class BearerTokenAuth(requests.auth.AuthBase):
         self.token = token
 
     def __call__(self, req):
+        _reject_insecure_token_transport(req.url)
         req.headers["Authorization"] = f"Bearer {self.token}"
         return req
 

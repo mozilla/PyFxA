@@ -4,7 +4,9 @@
 import warnings
 
 from fxa.tests.utils import unittest
-from fxa._utils import FxATokenBearerAuth, HawkTokenAuth, TOKEN_PREFIXES
+from fxa._utils import (
+    BearerTokenAuth, FxATokenBearerAuth, HawkTokenAuth, TOKEN_PREFIXES
+)
 from fxa.errors import TrustError
 
 
@@ -86,6 +88,19 @@ class TestFxATokenBearerAuth(unittest.TestCase):
         auth(Request(url="http://localhost:9000/v1/session/status"))
         auth(Request(url="http://127.0.0.1:9000/v1/session/status"))
         auth(Request(url="http://0.0.0.0:9000/v1/session/status"))
+
+
+class TestBearerTokenAuth(unittest.TestCase):
+
+    def test_raises_when_token_sent_over_plaintext_http(self):
+        auth = BearerTokenAuth("eyJ.mfa.jwt")
+        with self.assertRaises(TrustError):
+            auth(Request(url="http://accounts.example.com/v1/mfa/totp/create"))
+
+    def test_no_error_over_https_or_loopback(self):
+        auth = BearerTokenAuth("eyJ.mfa.jwt")
+        auth(Request(url="https://accounts.example.com/v1/mfa/totp/create"))
+        auth(Request(url="http://localhost:9000/v1/mfa/totp/create"))
 
 
 class TestHawkTokenAuthAlias(unittest.TestCase):
