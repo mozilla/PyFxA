@@ -8,7 +8,7 @@ import responses
 import fxa.errors
 from fxa.profile import Client
 
-from fxa.tests.utils import unittest
+import unittest
 
 
 TEST_SERVER_URL = "https://profile.server/v1"

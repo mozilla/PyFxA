@@ -1,7 +1,7 @@
 import time
 
 from fxa.cache import MemoryCache
-from fxa.tests.utils import unittest
+import unittest
 
 
 class TestMemoryCache(unittest.TestCase):

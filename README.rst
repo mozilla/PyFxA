@@ -69,7 +69,7 @@ testing with live email addresses.  It works like this:
 .. code-block:: python
 
     from fxa.core import Client
-    from fxa.tests.utils import TestEmailAccount
+    from fxa.testing import TestEmailAccount
 
     # Create a testing account using an @restmail.net address.
     acct = TestEmailAccount()

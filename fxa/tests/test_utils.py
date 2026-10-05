@@ -3,7 +3,7 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import warnings
 
-from fxa.tests.utils import unittest
+import unittest
 from fxa._utils import (
     BearerTokenAuth, FxATokenBearerAuth, HawkTokenAuth, TOKEN_PREFIXES
 )
@@ -117,3 +117,22 @@ class TestHawkTokenAuthAlias(unittest.TestCase):
         self.assertEqual(
             header, f"Bearer fxs_{EXPECTED_IDS['sessionToken']}"
         )
+
+
+class TestDeprecatedTestsUtilsModule(unittest.TestCase):
+
+    def test_fxa_tests_utils_is_a_deprecated_alias_for_fxa_testing(self):
+        import importlib
+        import sys
+        import fxa.testing
+        sys.modules.pop("fxa.tests.utils", None)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            legacy = importlib.import_module("fxa.tests.utils")
+        self.assertTrue(any(
+            issubclass(w.category, DeprecationWarning) for w in caught
+        ))
+        self.assertIs(legacy.TestEmailAccount, fxa.testing.TestEmailAccount)
+        self.assertIs(legacy.mutate_one_byte, fxa.testing.mutate_one_byte)
+        self.assertEqual(legacy.DUMMY_PASSWORD, fxa.testing.DUMMY_PASSWORD)
+        self.assertIs(legacy.unittest, unittest)

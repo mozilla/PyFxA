@@ -6,6 +6,9 @@ This document describes changes between each past release.
 0.9.0 (unreleased)
 ==================
 
+- Stop installing the test suite and its key fixtures with the package (#98).
+  The ``TestEmailAccount`` helper and friends now live in ``fxa.testing``;
+  ``fxa.tests.utils`` remains as a deprecated alias.
 - Move TOTP management to the ``/mfa/totp/*`` routes. ``/totp/destroy`` was
   removed server-side in January 2026 and ``/totp/create`` is being retired.
   ``Session.totp_create`` and ``totp_delete`` now take an MFA token from the

@@ -4,6 +4,7 @@
 import json
 import os
 import time
+import unittest
 
 from urllib.parse import urlparse
 
@@ -17,8 +18,7 @@ import fxa.errors
 from fxa.core import Client, PasswordForgotToken, Session, StretchedPassword
 from fxa._utils import APIClient, FxATokenBearerAuth
 
-from fxa.tests.utils import (
-    unittest,
+from fxa.testing import (
     mutate_one_byte,
     TestEmailAccount,
     DUMMY_PASSWORD,

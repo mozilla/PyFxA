@@ -8,7 +8,7 @@ import hmac
 
 from fxa import core
 from fxa import errors
-from fxa.tests.utils import TestEmailAccount
+from fxa.testing import TestEmailAccount
 
 FXA_ERROR_ACCOUNT_EXISTS = 101
 
