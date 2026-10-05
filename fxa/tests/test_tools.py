@@ -103,3 +103,20 @@ class TestCreateNewFxaAccount(unittest.TestCase):
             fxa_main()
         self.assertEqual(exit_.exception.code, 1)
         self.assertIn("Verification email was not received", logs.output[0])
+
+
+class TestMainAuthArgument(unittest.TestCase):
+
+    @mock.patch('fxa.__main__.get_bearer_token', return_value="tok")
+    def test_email_and_password_can_be_given_inline(self, get_token):
+        fxa_main(["--bearer", "--auth", "me@example.com:s3cret:with:colons"])
+        self.assertEqual(get_token.call_args[0][:2],
+                         ("me@example.com", "s3cret:with:colons"))
+
+    @mock.patch('fxa.__main__.getpass.getpass', return_value="prompted")
+    @mock.patch('fxa.__main__.get_bearer_token', return_value="tok")
+    def test_password_is_prompted_for_when_omitted(self, get_token, getpass):
+        fxa_main(["--bearer", "--auth", "me@example.com"])
+        self.assertEqual(get_token.call_args[0][:2],
+                         ("me@example.com", "prompted"))
+        getpass.assert_called_once()
