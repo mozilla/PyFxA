@@ -170,7 +170,7 @@ def main(args=None):
             email, password = create_new_fxa_account(
                 os.getenv('FXA_USER_SALT', args.get('fxa_user_salt')),
                 account_server_url, args['prefix'], content_server_url)
-        except (ClientError, ValueError) as e:
+        except (ClientError, ValueError, RuntimeError) as e:
             logger.error(e)
             sys.exit(1)
 

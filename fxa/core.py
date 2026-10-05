@@ -77,8 +77,7 @@ class Client:
                 "authPW": spwd.get_auth_pw_v1(),
             }
 
-        EXTRA_KEYS = ("service", "redirectTo", "resume", "preVerifyToken",
-                      "preVerified")
+        EXTRA_KEYS = ("service", "redirectTo", "resume")
         for extra in kwds:
             if extra in EXTRA_KEYS:
                 body[extra] = kwds[extra]
