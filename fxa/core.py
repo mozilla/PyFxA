@@ -115,35 +115,18 @@ class Client:
               verification_method=None, reason="login"):
         exactly_one_of(password, "password", stretchpwd, "stretchpwd")
 
+        upgrade = False
         if self.key_stretch_version == 2:
             version, salt = self.get_key_stretch_version(email)
-            salt = salt if version == 2 else create_salt(2, hexlify(token_bytes(16)))
+            upgrade = version != 2
+            salt = salt if not upgrade else create_salt(2, hexlify(token_bytes(16)))
             spwd = StretchedPassword(2, email, salt, password, stretchpwd)
-
-            try:
-                resp = self.start_password_change(email, spwd.v1)
-                key_fetch_token = resp["keyFetchToken"]
-                password_change_token = resp["passwordChangeToken"]
-                kb = self.fetch_keys(resp["keyFetchToken"], spwd.v1)[1]
-                resp = self.finish_password_change_v2(
-                    password_change_token,
-                    spwd,
-                    kb
-                )
-                body = {
-                    "email": email,
-                    "authPW": spwd.get_auth_pw_v2(),
-                    "reason": reason,
-                }
-            except Exception as inst:
-                # If something goes wrong fallback to v1 logins!
-                print("Warning! v2 key stretch auto upgrade failed! Falling back to v1 login. " +
-                      f"Reason: {inst}")
-                body = {
-                    "email": email,
-                    "authPW": spwd.get_auth_pw_v1(),
-                    "reason": reason,
-                }
+            # A v1 account signs in with v1 credentials, then upgrades below.
+            body = {
+                "email": email,
+                "authPW": spwd.get_auth_pw_v1() if upgrade else spwd.get_auth_pw_v2(),
+                "reason": reason,
+            }
         else:
             spwd = StretchedPassword(1, email, None, password, stretchpwd)
             body = {
@@ -163,7 +146,22 @@ class Client:
         resp = self.apiclient.post(url, body)
 
         # Repackage stretchpwd based on version
-        if self.key_stretch_version == 2:
+        if upgrade:
+            try:
+                change = self.start_password_change(email, spwd.v1, resp["sessionToken"])
+                kb = self.fetch_keys(change["keyFetchToken"], spwd.v1)[1]
+                # The password change replaces the session, so use the new one.
+                resp = {**resp, **self.finish_password_change_v2(
+                    change["passwordChangeToken"], spwd, kb, resp["sessionToken"], keys)}
+                stretchpwd_final = spwd
+                key_fetch_token = resp.get("keyFetchToken2")
+            except Exception as inst:
+                # Keep the v1 session, e.g. when it is not verified yet.
+                print("Warning! v2 key stretch auto upgrade failed! Continuing with v1 login. " +
+                      f"Reason: {inst}")
+                stretchpwd_final = spwd.v1
+                key_fetch_token = resp.get("keyFetchToken")
+        elif self.key_stretch_version == 2:
             stretchpwd_final = spwd
             key_fetch_token = resp.get("keyFetchTokenVersion2")
         else:
@@ -232,7 +230,12 @@ class Client:
         return unwrap_keys(keys, stretchpwd)
 
     def change_password(self, email, oldpwd=None, newpwd=None,
-                        oldstretchpwd=None, newstretchpwd=None):
+                        oldstretchpwd=None, newstretchpwd=None, *, session_token):
+        """Change the password using a verified ``session_token``.
+
+        The server deletes every token on the account, so the returned
+        response carries the replacement ``sessionToken``.
+        """
         exactly_one_of(oldpwd, "oldpwd", oldstretchpwd, "oldstretchpwd")
         exactly_one_of(newpwd, "newpwd", newstretchpwd, "newstretchpwd")
 
@@ -242,42 +245,44 @@ class Client:
             new_spwd = StretchedPassword(2, email, salt, newpwd, newstretchpwd)
 
             if version == 2:
-                resp = self.start_password_change(email, old_spwd.v2)
+                resp = self.start_password_change(email, old_spwd.v2, session_token)
                 kb = self.fetch_keys(resp["keyFetchToken2"], old_spwd.v2)[1]
             else:
-                resp = self.start_password_change(email, old_spwd.v1)["passwordChangeToken"]
+                resp = self.start_password_change(email, old_spwd.v1, session_token)
                 kb = self.fetch_keys(resp["keyFetchToken"], old_spwd.v1)[1]
 
-            self.finish_password_change_v2(
+            return self.finish_password_change_v2(
                 resp["passwordChangeToken"],
                 new_spwd,
-                kb)
+                kb,
+                session_token)
         else:
             if oldpwd:
                 oldstretchpwd = quick_stretch_password(email, oldpwd)
             if newpwd:
                 newstretchpwd = quick_stretch_password(email, newpwd)
-            resp = self.start_password_change(email, oldstretchpwd)
+            resp = self.start_password_change(email, oldstretchpwd, session_token)
             kb = self.fetch_keys(resp["keyFetchToken"], oldstretchpwd)[1]
             new_wrapkb = derive_wrap_kb(kb, newstretchpwd)
-            self.finish_password_change(resp["passwordChangeToken"], newstretchpwd, new_wrapkb)
+            return self.finish_password_change(
+                resp["passwordChangeToken"], newstretchpwd, new_wrapkb, session_token)
 
-    def start_password_change(self, email, stretchpwd):
+    def start_password_change(self, email, stretchpwd, session_token):
         body = {
             "email": email,
             "oldAuthPW": hexstr(derive_auth_pw(stretchpwd)),
         }
-        return self.apiclient.post("/password/change/start", body)
+        auth = FxATokenBearerAuth(session_token, "sessionToken", self.apiclient)
+        return self.apiclient.post("/password/change/start", body, auth=auth)
 
-    def finish_password_change(self, token, stretchpwd, wrapkb):
+    def finish_password_change(self, token, stretchpwd, wrapkb, session_token):
         body = {
             "authPW": hexstr(derive_auth_pw(stretchpwd)),
             "wrapKb": hexstr(wrapkb),
         }
-        auth = FxATokenBearerAuth(token, "passwordChangeToken", self.apiclient)
-        self.apiclient.post("/password/change/finish", body, auth=auth)
+        return self._finish_password_change(token, body, session_token)
 
-    def finish_password_change_v2(self, token, spwd, kb):
+    def finish_password_change_v2(self, token, spwd, kb, session_token, keys=False):
         body = {
             "authPW": spwd.get_auth_pw_v1(),
             "wrapKb": spwd.get_wrapkb_v1(kb),
@@ -285,9 +290,16 @@ class Client:
             "wrapKbVersion2": spwd.get_wrapkb_v2(kb),
             "clientSalt": spwd.v2_salt,
         }
-        auth = FxATokenBearerAuth(token, "passwordChangeToken", self.apiclient)
+        return self._finish_password_change(token, body, session_token, keys)
 
-        return self.apiclient.post("/password/change/finish", body, auth=auth)
+    def _finish_password_change(self, token, body, session_token, keys=False):
+        # Lets the replacement session keep the current session's verified state.
+        body["sessionToken"] = FxATokenBearerAuth(session_token, "sessionToken").id
+        url = "/password/change/finish"
+        if keys:
+            url += "?keys=true"
+        auth = FxATokenBearerAuth(token, "passwordChangeToken", self.apiclient)
+        return self.apiclient.post(url, body, auth=auth)
 
     def reset_account(self, email, token, password=None, stretchpwd=None):
         # TODO: Add support for recovery key!
@@ -321,39 +333,35 @@ class Client:
         auth = FxATokenBearerAuth(token, "accountResetToken", self.apiclient)
         self.apiclient.post(url, body, auth=auth)
 
-    def send_reset_code(self, email, **kwds):
-        body = {
-            "email": email,
-        }
-        for extra in kwds:
-            if extra in ("service", "redirectTo", "resume"):
-                body[extra] = kwds[extra]
-            else:
-                msg = f"Unexpected keyword argument: {extra}"
-                raise TypeError(msg)
-        url = "/password/forgot/send_code"
-        resp = self.apiclient.post(url, body)
-        return PasswordForgotToken(
-            self, email,
-            resp["passwordForgotToken"],
-            resp["ttl"],
-            resp["codeLength"],
-            resp["tries"],
-        )
+    def send_reset_code(self, email, service=None):
+        """Email a one-time code that starts a password reset for ``email``.
 
-    def resend_reset_code(self, email, token, **kwds):
+        The server issues no token until the code is verified, so the
+        returned :class:`PasswordForgotToken` is only usable through
+        :meth:`PasswordForgotToken.verify_code`.
+        """
         body = {
             "email": email,
         }
-        for extra in kwds:
-            if extra in ("service", "redirectTo", "resume"):
-                body[extra] = kwds[extra]
-            else:
-                msg = f"Unexpected keyword argument: {extra}"
-                raise TypeError(msg)
-        url = "/password/forgot/resend_code"
-        auth = FxATokenBearerAuth(token, "passwordForgotToken", self.apiclient)
-        return self.apiclient.post(url, body, auth=auth)
+        if service is not None:
+            body["service"] = service
+        url = "/password/forgot/send_otp"
+        self.apiclient.post(url, body)
+        return PasswordForgotToken(self, email, service=service)
+
+    def verify_reset_otp(self, email, code):
+        """Exchange the emailed one-time code for a ``passwordForgotToken``.
+
+        Returns the raw response: ``token`` (the passwordForgotToken), the
+        server-issued ``code`` that :meth:`verify_reset_code` expects,
+        ``uid`` and ``emailToHashWith``.
+        """
+        body = {
+            "email": email,
+            "code": code,
+        }
+        url = "/password/forgot/verify_otp"
+        return self.apiclient.post(url, body)
 
     def verify_reset_code(self, token, code):
         body = {
@@ -362,11 +370,6 @@ class Client:
         url = "/password/forgot/verify_code"
         auth = FxATokenBearerAuth(token, "passwordForgotToken", self.apiclient)
         return self.apiclient.post(url, body, auth=auth)
-
-    def get_reset_code_status(self, token):
-        url = "/password/forgot/status"
-        auth = FxATokenBearerAuth(token, "passwordForgotToken", self.apiclient)
-        return self.apiclient.get(url, auth=auth)
 
     def verify_email_code(self, uid, code):
         body = {
@@ -573,14 +576,24 @@ class Session:
 
     def change_password(self, oldpwd, newpwd,
                         oldstretchpwd=None, newstretchpwd=None):
-        return self.client.change_password(self.email, oldpwd, newpwd,
-                                           oldstretchpwd, newstretchpwd)
+        resp = self.client.change_password(self.email, oldpwd, newpwd,
+                                           oldstretchpwd, newstretchpwd,
+                                           session_token=self.token)
+        self._use_replacement_session(resp)
+        return resp
 
     def start_password_change(self, stretchpwd):
-        return self.client.start_password_change(self.email, stretchpwd)
+        return self.client.start_password_change(self.email, stretchpwd, self.token)
 
     def finish_password_change(self, token, stretchpwd, wrapkb):
-        return self.client.finish_password_change(token, stretchpwd, wrapkb)
+        resp = self.client.finish_password_change(token, stretchpwd, wrapkb, self.token)
+        self._use_replacement_session(resp)
+        return resp
+
+    def _use_replacement_session(self, resp):
+        # A password change deletes this session; switch to the one the server issued.
+        self.token = resp["sessionToken"]
+        self._auth = FxATokenBearerAuth(self.token, "sessionToken", self.apiclient)
 
     def get_random_bytes(self):
         # XXX TODO: sanity-check the schema of the returned response
@@ -588,31 +601,33 @@ class Session:
 
 
 class PasswordForgotToken:
+    """A password reset in progress, started by :meth:`Client.send_reset_code`.
 
-    def __init__(self, client, email, token, ttl=0, code_length=16,
-                 tries_remaining=1):
+    The auth server emails an 8-digit one-time code. Pass it to
+    :meth:`verify_code` to obtain the ``accountResetToken`` that
+    :meth:`Client.reset_account` needs. ``token``, ``uid`` and
+    ``email_to_hash_with`` are populated once the code has been verified.
+    """
+
+    def __init__(self, client, email, service=None):
         self.client = client
         self.email = email
-        self.token = token
-        self.ttl = ttl
-        self.code_length = code_length
-        self.tries_remaining = tries_remaining
+        self.service = service
+        self.token = None
+        self.uid = None
+        self.email_to_hash_with = None
 
     def verify_code(self, code):
-        resp = self.client.verify_reset_code(self.token, code)
+        otp = self.client.verify_reset_otp(self.email, code)
+        self.token = otp["token"]
+        self.uid = otp["uid"]
+        self.email_to_hash_with = otp["emailToHashWith"]
+        resp = self.client.verify_reset_code(self.token, otp["code"])
         return resp["accountResetToken"]
 
-    def resend_code(self, **kwds):
-        resp = self.client.resend_reset_code(self.email, self.token, **kwds)
-        self.ttl = resp["ttl"]
-        self.code_length = resp["codeLength"]
-        self.tries_remaining = resp["tries"]
-
-    def get_status(self):
-        resp = self.client.get_reset_code_status(self.token)
-        self.ttl = resp["ttl"]
-        self.tries_remaining = resp["tries"]
-        return resp
+    def resend_code(self):
+        """Email a fresh one-time code."""
+        self.client.send_reset_code(self.email, service=self.service)
 
 
 class StretchedPassword:

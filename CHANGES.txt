@@ -13,6 +13,22 @@ This document describes changes between each past release.
   with ``totp_setup_verify`` and ``totp_setup_complete``.
 - ``BearerTokenAuth`` now raises ``TrustError`` over non-loopback ``http://``,
   like the FxA token auth. This also applies to ``fxa.profile`` calls.
+- Move password reset to the ``/password/forgot/send_otp`` and
+  ``/password/forgot/verify_otp`` routes. The ``send_code``, ``resend_code``
+  and ``status`` routes were removed server-side in January 2026 and had been
+  returning 404. ``Client.send_reset_code`` now takes only ``service`` and
+  returns a ``PasswordForgotToken`` whose ``token`` and ``uid`` are set by
+  ``verify_code``. ``PasswordForgotToken.get_status``,
+  ``Client.resend_reset_code`` and ``Client.get_reset_code_status`` are
+  removed; ``Client.verify_reset_otp`` is new.
+- ``/password/change/start`` now requires a verified session token.
+  ``Client.change_password`` takes a required ``session_token`` keyword and
+  returns the server response. ``Client.start_password_change``,
+  ``finish_password_change`` and ``finish_password_change_v2`` take a required
+  session token. ``Session.change_password`` and
+  ``Session.finish_password_change`` switch to the new session the server
+  issues. A v2 ``login`` of a v1 account now signs in with v1
+  credentials first, then upgrades with a password change.
 
 0.8.2 (2026-05-14)
 ==================
