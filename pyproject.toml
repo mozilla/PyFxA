@@ -53,6 +53,13 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = [ "fxa" ]
+# Ship the public ``fxa.testing`` helpers and the ``fxa.tests.utils`` compat
+# shim, but not the test suite or its fixtures (see #98).
+exclude = [
+  "fxa/tests/test_*.py",
+  "fxa/tests/mock_utilities.py",
+  "fxa/tests/*.json",
+]
 
 [tool.hatch.envs.test]
 dependencies = [

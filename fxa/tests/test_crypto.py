@@ -3,6 +3,7 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
 import re
+import unittest
 
 from parameterized import parameterized
 
@@ -18,8 +19,7 @@ from fxa.crypto import (
     xor
 )
 
-from fxa.tests.utils import (
-    unittest,
+from fxa.testing import (
     mutate_one_byte,
     DUMMY_EMAIL,
     DUMMY_PASSWORD,

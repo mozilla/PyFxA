@@ -12,7 +12,7 @@ import fxa.errors
 from fxa.cache import MemoryCache
 from fxa.oauth import Client, scope_matches
 from fxa._utils import _decoded
-from fxa.tests.utils import unittest
+import unittest
 
 from urllib.parse import urlparse, parse_qs
 
