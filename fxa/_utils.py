@@ -149,6 +149,15 @@ def _match_url_scope(provided, required):
     return True
 
 
+WAF_CHALLENGE_URL = "https://github.com/mozilla/PyFxA#ci-waf-bypass"
+WAF_CHALLENGE_MESSAGE = (
+    "API responded with an empty HTTP 406. This is the web application "
+    "firewall in front of Mozilla Accounts challenging the request. "
+    "Set the CI_WAF_TOKEN environment variable if you have a bypass token, "
+    "see " + WAF_CHALLENGE_URL
+)
+
+
 class APIClient:
     """A requests.Session wrapper specialized for FxA API access.
 
@@ -273,6 +282,8 @@ class APIClient:
         # Everything should return a valid JSON response.  Even errors.
         content_type = resp.headers.get("content-type", "")
         if not content_type.startswith("application/json"):
+            if resp.status_code == 406:
+                raise fxa.errors.OutOfProtocolError(WAF_CHALLENGE_MESSAGE)
             msg = "API responded with non-json content-type: {0}"
             raise fxa.errors.OutOfProtocolError(msg.format(content_type))
         try:

@@ -7,7 +7,7 @@ import re
 import sys
 
 from fxa.constants import ENVIRONMENT_URLS
-from fxa.errors import ClientError
+from fxa.errors import Error as FxAError
 from fxa.tools.create_user import create_new_fxa_account
 from fxa.tools.bearer import get_bearer_token
 from fxa.tools.unblock import send_unblock_code
@@ -149,7 +149,7 @@ def main(args=None):
 
         try:
             send_unblock_code(email, account_server_url)
-        except (ClientError, ValueError) as e:
+        except (FxAError, ValueError) as e:
             logger.error(e)
             sys.exit(1)
 
@@ -172,7 +172,7 @@ def main(args=None):
             email, password = create_new_fxa_account(
                 os.getenv('FXA_USER_SALT', args.get('fxa_user_salt')),
                 account_server_url, args['prefix'], content_server_url)
-        except (ClientError, ValueError, RuntimeError) as e:
+        except (FxAError, ValueError, RuntimeError) as e:
             logger.error(e)
             sys.exit(1)
 
@@ -197,7 +197,7 @@ def main(args=None):
                                      client_secret,
                                      use_pkce,
                                      unblock_code)
-        except ClientError as e:
+        except (FxAError, ValueError) as e:
             logger.error(e)
             sys.exit(1)
 

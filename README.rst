@@ -93,8 +93,13 @@ CI WAF bypass
 =============
 
 When running CI tests against a Mozilla Accounts environment protected by
-WAF, requests may be subject to challenge rules.
-To bypass them, set the ``CI_WAF_TOKEN`` environment variable::
+WAF, requests may be subject to challenge rules. A challenged request gets an
+empty ``HTTP 406`` response, which PyFxA reports as an ``OutOfProtocolError``
+pointing at this section. The ``/account/login`` and ``/account/create`` routes
+on both production and stage are known to be challenged, so this also affects
+``fxa-client --bearer`` and ``fxa-client --create`` run outside CI.
+
+To bypass the challenge, set the ``CI_WAF_TOKEN`` environment variable::
 
     export CI_WAF_TOKEN=<token>
 
