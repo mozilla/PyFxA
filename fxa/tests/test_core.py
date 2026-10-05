@@ -615,6 +615,18 @@ class TestCorePasswordReset(unittest.TestCase):
         self.assertEqual(body, {"email": "test@example.com", "service": "sync"})
 
 
+class TestCoreCreateAccount(unittest.TestCase):
+
+    @responses.activate
+    def test_removed_preverify_keywords_raise_before_request(self):
+        client = Client("https://server/v1")
+        for kwarg in ("preVerified", "preVerifyToken"):
+            with self.subTest(kwarg=kwarg):
+                with self.assertRaises(TypeError):
+                    client.create_account("test@example.com", "password", **{kwarg: True})
+        self.assertEqual(len(responses.calls), 0)
+
+
 # helpers
 def verify_account(acct, client):
     def wait_for_email(m):

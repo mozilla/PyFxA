@@ -29,6 +29,10 @@ This document describes changes between each past release.
   ``Session.finish_password_change`` switch to the new session the server
   issues. A v2 ``login`` of a v1 account now signs in with v1
   credentials first, then upgrades with a password change.
+- ``Client.create_account`` no longer accepts ``preVerified`` or
+  ``preVerifyToken``. The auth-server no longer supports ``preVerifyToken``
+  and is removing ``preVerified``, which it then ignores without an error.
+  ``fxa --create-user`` now verifies the new account with the emailed code.
 
 0.8.2 (2026-05-14)
 ==================
