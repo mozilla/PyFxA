@@ -266,3 +266,57 @@ To run the tests with specific Python version you can specify this with hatch:
 .. code:: bash
 
     hatch run +py=3.10 test:cov
+
+=======================
+Releasing a new version
+=======================
+
+Releases are published to PyPI by the "Release PyFxA" job in
+``.github/workflows/test.yml``. It runs when a GitHub release is published,
+after the test matrix passes.
+
+1. Make sure every change for the release is merged to ``main`` and has an
+   entry under the ``(unreleased)`` heading in ``CHANGES.txt``.
+
+2. On a new branch, set the version and the release date:
+
+   - In ``CHANGES.txt``, replace ``(unreleased)`` with today's date, for
+     example ``0.9.0 (2026-10-06)``.
+   - In ``fxa/__init__.py``, set ``__version__`` to the new version.
+
+   Commit with a message like ``chore(version): Bump version to 0.9.0``,
+   open a PR and merge it with a merge commit. Squash merging works too, as
+   long as the tag in the next step points at a commit that is on ``main``.
+
+3. Tag the release commit and push the tag:
+
+   .. code:: bash
+
+       git fetch origin main
+       git tag v0.9.0 origin/main
+       git push origin v0.9.0
+
+4. Publish a GitHub release from the tag. Use the ``CHANGES.txt`` section for
+   the notes:
+
+   .. code:: bash
+
+       gh release create v0.9.0 --title v0.9.0 --notes-file notes.txt
+
+   Publishing the release triggers the workflow, which runs the tests, builds
+   the sdist and wheel, and uploads them to PyPI. A draft or pre-release does
+   not trigger it.
+
+5. Check the run under the Actions tab, then confirm the new version is listed
+   at https://pypi.org/project/pyfxa/.
+
+If the upload step fails, fix the workflow on ``main`` and run the release job
+by hand. A release event uses the workflow file from the tagged commit, so
+re-publishing the release would not pick up the fix.
+
+.. code:: bash
+
+    gh workflow run test.yml --ref main
+
+The manual run builds whatever is on ``main``, so only do this when ``main``
+still carries the version you mean to publish.
