@@ -1,10 +1,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
+import unittest
 import warnings
 
-from fxa.tests.utils import unittest
+import responses
+
+import fxa.errors
 from fxa._utils import (
+    APIClient, WAF_CHALLENGE_URL,
     BearerTokenAuth, FxATokenBearerAuth, HawkTokenAuth, TOKEN_PREFIXES
 )
 from fxa.errors import TrustError
@@ -117,3 +121,29 @@ class TestHawkTokenAuthAlias(unittest.TestCase):
         self.assertEqual(
             header, f"Bearer fxs_{EXPECTED_IDS['sessionToken']}"
         )
+
+
+class TestAPIClientWAFChallenge(unittest.TestCase):
+
+    @responses.activate
+    def test_empty_406_is_explained_as_a_waf_challenge(self):
+        responses.add(responses.POST, "https://api.example.com/v1/account/login",
+                      status=406, body="")
+        client = APIClient("https://api.example.com/v1")
+        with self.assertRaises(fxa.errors.OutOfProtocolError) as cm:
+            client.post("/account/login", {"email": "x@example.com"})
+        message = str(cm.exception)
+        self.assertIn("406", message)
+        self.assertIn("CI_WAF_TOKEN", message)
+        self.assertIn(WAF_CHALLENGE_URL, message)
+
+    @responses.activate
+    def test_other_non_json_responses_keep_the_generic_error(self):
+        responses.add(responses.POST, "https://api.example.com/v1/account/login",
+                      status=502, body="<html>bad gateway</html>",
+                      content_type="text/html")
+        client = APIClient("https://api.example.com/v1")
+        with self.assertRaises(fxa.errors.OutOfProtocolError) as cm:
+            client.post("/account/login", {"email": "x@example.com"})
+        self.assertIn("non-json content-type", str(cm.exception))
+        self.assertNotIn("CI_WAF_TOKEN", str(cm.exception))

@@ -7,7 +7,7 @@ import re
 import sys
 
 from fxa.constants import ENVIRONMENT_URLS
-from fxa.errors import ClientError
+from fxa.errors import Error as FxAError
 from fxa.tools.create_user import create_new_fxa_account
 from fxa.tools.bearer import get_bearer_token
 from fxa.tools.unblock import send_unblock_code
@@ -112,7 +112,7 @@ def main(args=None):
                         dest='unblock_code',
                         required=False)
 
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(args))
     create = args['create']
     auth = args.get('auth')
     verbose = args['verbose']
@@ -149,7 +149,7 @@ def main(args=None):
 
         try:
             send_unblock_code(email, account_server_url)
-        except (ClientError, ValueError) as e:
+        except (FxAError, ValueError) as e:
             logger.error(e)
             sys.exit(1)
 
@@ -158,10 +158,12 @@ def main(args=None):
     elif auth:
         # Ask for the user password if needed
         auth = auth.split(':', 1)
+        email = auth[0]
         if len(auth) < 2:
-            email = auth[0]
             password = getpass.getpass('Please enter a password for %s: '
-                                       % auth[0])
+                                       % email)
+        else:
+            password = auth[1]
     elif create:
         # Create a new user
         logger.info('Creating the account.')
@@ -170,7 +172,7 @@ def main(args=None):
             email, password = create_new_fxa_account(
                 os.getenv('FXA_USER_SALT', args.get('fxa_user_salt')),
                 account_server_url, args['prefix'], content_server_url)
-        except (ClientError, ValueError, RuntimeError) as e:
+        except (FxAError, ValueError, RuntimeError) as e:
             logger.error(e)
             sys.exit(1)
 
@@ -195,7 +197,7 @@ def main(args=None):
                                      client_secret,
                                      use_pkce,
                                      unblock_code)
-        except ClientError as e:
+        except (FxAError, ValueError) as e:
             logger.error(e)
             sys.exit(1)
 
