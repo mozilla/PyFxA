@@ -72,5 +72,15 @@ cov = "pytest --cov-config=pyproject.toml --cov=fxa/ --cov-report term-missing {
 # Note: When changing these, also update the .github/workflows/test.yml file.
 python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
+[tool.hatch.envs.lint]
+detached = true
+dependencies = [
+  "flake8",
+  "flake8-pyproject",
+]
+[tool.hatch.envs.lint.scripts]
+check = "flake8 {args:fxa}"
+
 [tool.flake8]
+# Read by flake8 via the flake8-pyproject plugin (see the lint env above).
 max-line-length = 99
