@@ -4,7 +4,6 @@
 
 from binascii import unhexlify, hexlify
 from secrets import token_bytes
-from urllib.parse import quote as urlquote
 
 from fxa.errors import ClientError
 from fxa._utils import (
@@ -27,6 +26,7 @@ from fxa.crypto import (
 
 DEFAULT_SERVER_URL = PRODUCTION_URLS['authentication']
 VERSION_SUFFIXES = ("/v1",)
+
 
 class Client:
     """Client for talking to the Firefox Accounts auth server."""

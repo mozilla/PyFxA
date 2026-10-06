@@ -124,7 +124,6 @@ def main(args=None):
     account_server_url = ENVIRONMENT_URLS[fxa_env]['authentication']
     oauth_server_url = ENVIRONMENT_URLS[fxa_env]['oauth']
     content_server_url = ENVIRONMENT_URLS[fxa_env]['content']
-    token_server_url = ENVIRONMENT_URLS[fxa_env]['token']
 
     if args['account_server_url']:
         account_server_url = args['account_server_url']

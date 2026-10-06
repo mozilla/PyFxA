@@ -458,6 +458,7 @@ class TestAuthClientAuthorizeToken(unittest.TestCase):
             "code_challenge_method": AnyStringValue(),
         })
 
+
 class TestScopeMatch(unittest.TestCase):
     def test_always_matches_if_required_is_empty(self):
         self.assertTrue(scope_matches(['abc'], []))

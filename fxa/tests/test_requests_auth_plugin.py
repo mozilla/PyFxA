@@ -12,6 +12,7 @@ class Request:
         self.url = 'http://www.example.com'
         self.headers = {'Content-Type': 'application/json'}
 
+
 class TestFxABearerTokenAuth(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

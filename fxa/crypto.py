@@ -12,7 +12,6 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.hmac import HMAC
-from cryptography.hazmat.primitives.asymmetric import dsa
 
 import re
 
@@ -213,6 +212,7 @@ def unbundle(key, namespace, payload):
     # XOR-decrypt the ciphertext using the derived key.
     xor_key = key_material[32:]
     return xor(xor_key, ciphertext)
+
 
 def unwrap_keys(keys, stretchpwd):
     unwrap_key = derive_key(stretchpwd, "unwrapBkey")

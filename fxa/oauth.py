@@ -171,7 +171,8 @@ class Client:
             raise OutOfProtocolError(error_msg)
 
         if state != query_params["state"][0]:
-            error_msg = f"state mismatch in OAuth response (wanted: '{state}', got: '{query_params['state'][0]}')"
+            error_msg = (f"state mismatch in OAuth response "
+                         f"(wanted: '{state}', got: '{query_params['state'][0]}')")
             raise OutOfProtocolError(error_msg)
 
         try:
