@@ -9,6 +9,20 @@ on:
     types: [published]
   workflow_dispatch:
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install Hatch
+      run: pip install --upgrade hatch
+    - name: Run flake8
+      run: hatch run lint:check
+
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -35,6 +49,7 @@ jobs:
     name: Release PyFxA
     if: (github.event_name == 'release' && github.event.action == 'published') || github.event_name == 'workflow_dispatch'
     needs:
+      - lint
       - test
     runs-on: ubuntu-latest
     steps:
