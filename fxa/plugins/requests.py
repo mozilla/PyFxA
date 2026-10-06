@@ -2,12 +2,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import json
 import os
 
 from hashlib import sha256
 from requests.auth import AuthBase
-from urllib.parse import urlparse
 
 from fxa.cache import MemoryCache
 from fxa.constants import PRODUCTION_URLS
@@ -26,6 +24,7 @@ def get_cache_key(*args):
             cache_key.update(str(key).encode('utf-8'))
         cache_key.update(b'\n')
     return cache_key.hexdigest()
+
 
 class FxABearerTokenAuth(AuthBase):
     def __init__(self, email, password, scopes=None, client_id=None,

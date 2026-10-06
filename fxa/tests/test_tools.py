@@ -11,6 +11,7 @@ from fxa.errors import ClientError
 from fxa.tools.bearer import get_bearer_token
 from fxa.tools.create_user import create_new_fxa_account
 
+
 class TestGetBearerToken(unittest.TestCase):
     def test_account_server_url_is_mandatory(self):
         try:
